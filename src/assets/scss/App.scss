@@ -4,9 +4,6 @@ body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-}
-
-.container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -38,4 +35,81 @@ button {
 button:hover {
   background-color: #B03060;
   color: white;
+}
+
+/* Style for log in, sign up and reset password */
+
+.form-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+
+  .form-box {
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+
+    h2 {
+      color: #2C3E50;
+      margin-bottom: 1rem;
+    }
+
+    .error {
+      color: red;
+      margin-bottom: 1rem;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+
+      label {
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+      }
+
+      input {
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      button {
+        background-color: #EED6C4;
+        color: #B03060;
+        padding: 15px 30px;
+        border: 2px solid #B03060;
+        border-radius: 5px;
+        font-size: 18px;
+        cursor: pointer;
+        transition: background-color 0.3s, color 0.3s;
+
+        &:disabled {
+          background-color: #ccc;
+        }
+
+        &:hover {
+          background-color: #B03060;
+          color: white;
+        }
+      }
+    }
+
+    .links {
+      margin-top: 1rem;
+
+      a {
+        color: #b03060;
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
 }
