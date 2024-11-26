@@ -18,7 +18,7 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(email, password);
-      navigate("/my-page");
+      navigate("/start-page");
     } catch (err: unknown) {
       if (err instanceof FirebaseError) {
         setError(err.message);
