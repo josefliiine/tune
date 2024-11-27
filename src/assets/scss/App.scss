@@ -12,6 +12,15 @@ body {
   background: linear-gradient(to top right, #B03060, #EED6C4);
 }
 
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+}
+
 .logo-container {
   margin-bottom: 20px;
 }
@@ -159,6 +168,7 @@ button:hover {
   text-align: center;
   margin-bottom: 1rem;
   color: #3C6E47;
+  margin: 10px;
 }
 
 .menu {
@@ -203,6 +213,84 @@ button:hover {
 .close-button:hover {
   color: #000;
   background: none;
+}
+
+/* UserPage */
+
+.user-page {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.profile-image-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.image-preview {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 0 auto 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f0f0f0;
+}
+
+.image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placeholder {
+  color: #B03060;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: #2C3E50;
+}
+
+#user-name {
+  background-color: #EED6C4;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: text;
+  font-size: 16px;
+  text-align: left;
+  border: 2px solid #B03060;
+  display: block;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+input[type="file"]::-webkit-file-upload-button {
+  background-color: #EED6C4;
+  color: #B03060;
+  border: 2px solid #B03060;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+input[type="file"]::-webkit-file-upload-button:hover {
+  background-color: #B03060;
+  color: white;
 }
 
 /* Bigger screens */

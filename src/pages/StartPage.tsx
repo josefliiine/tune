@@ -1,8 +1,10 @@
 import tuneLogo from '../assets/images/tune-logotype.png';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const StartPage = () => {
     const [openHamburgerMenu, setOpenHamburgerMenu] = useState(false);
+    const navigate = useNavigate();
 
     const openMenu = () => {
         setOpenHamburgerMenu(!openHamburgerMenu);
@@ -10,6 +12,10 @@ const StartPage = () => {
 
     const closeMenu = () => {
         setOpenHamburgerMenu(false);
+    };
+
+    const navigateToUserPage = () => {
+      navigate('/user-page')
     };
 
   return (
@@ -28,7 +34,7 @@ const StartPage = () => {
             <div className="menu">
             <button className="close-button" onClick={closeMenu}>x</button>
                 <ul>
-                    <li>My pages</li>
+                    <li onClick={navigateToUserPage}>My page</li>
                     <li>My friends</li>
                     <li>My statistics</li>
                     <li>Log out</li>
