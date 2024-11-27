@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getAuth, updateProfile } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 import Header from "../components/Header";
 
 const UserPage = () => {
@@ -11,8 +12,31 @@ const UserPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const db = getFirestore();
+  const auth = getAuth();
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      setPreviewImage(user.photoURL || null); // Show profile picture
+      setUserName(user.displayName || ""); // Show username
+    }
+  }, [auth]);
+
+  const uploadProfileImage = async (userId: string, file: File): Promise<string> => {
+    const storage = getStorage();
+    const imageRef = ref(storage, `users/${userId}/${file.name}`);
+    await uploadBytes(imageRef, file); // Upload file to Firebase Storage
+    return getDownloadURL(imageRef); // Fetch URL for the uploaded image
+  };
+
+  const updateFirestoreProfile = async (userId: string, displayName: string, photoURL: string) => {
+    const userRef = doc(db, "users", userId);
+    await setDoc(userRef, { displayName, photoURL }, { merge: true });
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files?.[0]) {
       const file = e.target.files[0];
       setProfileImage(file);
       setPreviewImage(URL.createObjectURL(file));
@@ -25,34 +49,32 @@ const UserPage = () => {
     setError(null);
     setSuccessMessage(null);
 
-    const auth = getAuth();
     const user = auth.currentUser;
 
     if (!user) {
-      setError("No user is logged in");
+      setError("No user is logged in.");
       setIsSubmitting(false);
       return;
     }
 
     try {
-      let photoURL = user.photoURL;
+      let photoURL = user.photoURL || "";
 
       if (profileImage) {
-        const storage = getStorage();
-        const imageRef = ref(storage, `users/${user.uid}/${profileImage.name}`);
-        await uploadBytes(imageRef, profileImage);
-        photoURL = await getDownloadURL(imageRef);
+        photoURL = await uploadProfileImage(user.uid, profileImage);
+        setPreviewImage(photoURL);
       }
 
-      await updateProfile(user, {
-        displayName: userName || user.displayName,
-        photoURL: photoURL || user.photoURL,
-      });
+      const displayName = userName || user.displayName || "";
 
-      setSuccessMessage("Profile updated successfully");
+      // Update user's profile
+      await updateProfile(user, { displayName, photoURL });
+      await updateFirestoreProfile(user.uid, displayName, photoURL);
+
+      setSuccessMessage("Profile updated successfully.");
     } catch (error) {
-      console.error("Error updating profile", error);
-      setError("Error updating profile");
+      console.error("Error updating profile:", error);
+      setError("Failed to update profile.");
     } finally {
       setIsSubmitting(false);
     }
@@ -62,7 +84,7 @@ const UserPage = () => {
     <div className="user-page">
       <Header />
       <div className="profile-image-container">
-      <h2>Update Your Profile</h2>
+        <h2>Update Your Profile</h2>
         <div className="image-preview">
           {previewImage ? (
             <img src={previewImage} alt="Profile preview" />
@@ -70,12 +92,7 @@ const UserPage = () => {
             <div className="placeholder">No image selected</div>
           )}
         </div>
-        <input
-          type="file"
-          id="profile-image"
-          accept="image/*"
-          onChange={handleFileChange}
-        />
+        <input type="file" id="profile-image" accept="image/*" onChange={handleFileChange} />
       </div>
 
       <div className="profile-form-container">
