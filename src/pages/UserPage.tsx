@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getAuth, updateProfile } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Header from "../components/Header";
 
 const UserPage = () => {
   const [userName, setUserName] = useState<string>("");
@@ -59,41 +60,44 @@ const UserPage = () => {
 
   return (
     <div className="user-page">
+      <Header />
+      <div className="profile-image-container">
       <h2>Update Your Profile</h2>
-      {error && <div className="error">{error}</div>}
-      {successMessage && <div className="success">{successMessage}</div>}
-      <form onSubmit={handleSubmit}>
-        <div className="profile-image-container">
-          <div className="image-preview">
-            {previewImage ? (
-              <img src={previewImage} alt="Profile preview" />
-            ) : (
-              <div className="placeholder">No image selected</div>
-            )}
+        <div className="image-preview">
+          {previewImage ? (
+            <img src={previewImage} alt="Profile preview" />
+          ) : (
+            <div className="placeholder">No image selected</div>
+          )}
+        </div>
+        <input
+          type="file"
+          id="profile-image"
+          accept="image/*"
+          onChange={handleFileChange}
+        />
+      </div>
+
+      <div className="profile-form-container">
+        {error && <div className="error">{error}</div>}
+        {successMessage && <div className="success">{successMessage}</div>}
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="user-name">Username</label>
+            <input
+              type="text"
+              id="user-name"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              placeholder="Enter your username"
+            />
           </div>
-          <input
-            type="file"
-            id="profile-image"
-            accept="image/*"
-            onChange={handleFileChange}
-          />
-        </div>
 
-        <div className="form-group">
-          <label htmlFor="user-name">Username</label>
-          <input
-            type="text"
-            id="user-name"
-            value={userName}
-            onChange={(e) => setUserName(e.target.value)}
-            placeholder="Enter your username"
-          />
-        </div>
-
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Updating profile..." : "Save Changes"}
-        </button>
-      </form>
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Updating profile..." : "Save Changes"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
