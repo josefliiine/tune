@@ -17,6 +17,14 @@ const HamburgerMenu = () => {
       navigate('/user-page')
     };
 
+    const navigateToStartPage = () => {
+      navigate('/start-page')
+    };
+
+    const navigateToFriendsPage = () => {
+      navigate('/friends-page')
+    };
+
     return (
         <div>
           <button className="menu-button" onClick={openMenu}>
@@ -29,8 +37,9 @@ const HamburgerMenu = () => {
                 x
               </button>
               <ul>
+                <li onClick={navigateToStartPage}>Game page</li>
                 <li onClick={navigateToUserPage}>My page</li>
-                <li>My friends</li>
+                <li onClick={navigateToFriendsPage}>My friends</li>
                 <li>My statistics</li>
                 <li>Log out</li>
               </ul>
