@@ -1,26 +1,35 @@
 import { useEffect, useState } from "react";
-import { getAuth } from "firebase/auth";
 import useFriendRequests from "../hooks/useFriendRequests";
+import { auth } from "../services/firebase";
 
 const FriendRequests = () => {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
     useEffect(() => {
-      const auth = getAuth();
       const user = auth.currentUser;
       if (user) {
         setCurrentUserId(user.uid);
       }
     }, []);
   
-    const { requests, loading, error } = useFriendRequests(currentUserId);
+    const { requests, loading, error, acceptFriendRequest, rejectFriendRequest } = useFriendRequests(currentUserId);
   
-    const handleAcceptFriendRequest = (friendId: string) => {
-      console.log(`Friend request from ${friendId} accepted.`);
+    const handleAcceptFriendRequest = async (requestId: string, userId: string, friendId: string) => {
+      try {
+        await acceptFriendRequest(requestId, userId, friendId)
+        console.log(`Friend request from ${friendId} accepted.`);
+      } catch (error) {
+        console.error("Error accepting friend request:", error);
+      }
     };
   
-    const handleRejectFriendRequest = (friendId: string) => {
-      console.log(`Friend request from ${friendId} rejected.`);
+    const handleRejectFriendRequest = async (requestId: string) => {
+      try {
+        await rejectFriendRequest(requestId)
+        console.log(`Friend request from ${requestId} rejected.`);
+      } catch (error) {
+        console.error("Error rejecting friend request:", error);
+      }
     };
   
     if (loading) {
@@ -44,8 +53,8 @@ const FriendRequests = () => {
               <p>
                 {request.senderName} ({request.senderEmail}) sent you a friend request.
               </p>
-              <button onClick={() => handleAcceptFriendRequest(request.friendId)}>Accept</button>
-              <button onClick={() => handleRejectFriendRequest(request.friendId)}>Reject</button>
+              <button onClick={() => handleAcceptFriendRequest(request.id, request.userId, request.friendId)}>Accept</button>
+              <button onClick={() => handleRejectFriendRequest(request.id)}>Reject</button>
             </li>
           ))}
         </ul>
