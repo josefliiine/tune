@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 const HamburgerMenu = () => {
     const [openHamburgerMenu, setOpenHamburgerMenu] = useState(false);
@@ -25,6 +27,14 @@ const HamburgerMenu = () => {
       navigate('/friends-page')
     };
 
+    const logOut = () => {
+      signOut(auth).then(() => {
+        navigate('/')
+      }).catch((error) => {
+        console.error(error);
+      })
+    }
+
     return (
         <div>
           <button className="menu-button" onClick={openMenu}>
@@ -41,7 +51,7 @@ const HamburgerMenu = () => {
                 <li onClick={navigateToUserPage}>My page</li>
                 <li onClick={navigateToFriendsPage}>My friends</li>
                 <li>My statistics</li>
-                <li>Log out</li>
+                <li onClick={logOut}>Log out</li>
               </ul>
             </div>
           )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, onSnapshot, where, Timestamp, query, getDoc, doc } from "firebase/firestore";
+import { collection, onSnapshot, where, Timestamp, query, getDoc, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
 
 interface FriendRequest {
@@ -16,6 +16,30 @@ const useFriendRequests = (currentUserId: string | null) => {
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const acceptFriendRequest = async (requestId: string, userId: string, friendId: string) => {
+    try {
+        await updateDoc(doc(db, "friends", requestId), { status: "accepted" });
+
+        // Add user to friends list for both users
+        const friendsListCollection = collection(db, "friendsList");
+        await Promise.all([
+            addDoc(friendsListCollection, { userId, friendId }),
+        ]);
+    } catch (error) {
+        console.error("Failed to accept friend request:", error);
+        throw error;
+    }
+};
+
+const rejectFriendRequest = async (requestId: string) => {
+    try {
+        await deleteDoc(doc(db, "friends", requestId));
+    } catch (error) {
+        console.error("Failed to reject friend request:", error);
+        throw error;
+    }
+}
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -48,8 +72,8 @@ const useFriendRequests = (currentUserId: string | null) => {
             })
           );
           setRequests(requestsWithUserInfo);
-        } catch (err) {
-          console.error("Error fetching friend requests with user data:", err);
+        } catch (error) {
+          console.error("Error fetching friend requests with user data:", error);
           setError("Failed to fetch friend requests.");
         } finally {
           setLoading(false);
@@ -65,7 +89,7 @@ const useFriendRequests = (currentUserId: string | null) => {
     return () => unsubscribe();
   }, [currentUserId]);
 
-  return { requests, loading, error };
+  return { requests, loading, error, acceptFriendRequest, rejectFriendRequest };
 };
 
 export default useFriendRequests;
