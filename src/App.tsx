@@ -7,6 +7,7 @@ import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import StartPage from "./pages/StartPage";
 import UserPage from "./pages/UserPage";
 import FriendsPage from "./pages/FriendsPage";
+import DifficultyPage from "./pages/DifficultyPage";
 
 function App() {
 
@@ -20,6 +21,7 @@ function App() {
         <Route path="/start-page" element={<StartPage />} />
         <Route path="/user-page" element={<UserPage />} />
         <Route path="/friends-page" element={<FriendsPage />} />
+        <Route path="/difficulty-page" element={<DifficultyPage />} />
       </Route>
     </Routes>
   )
