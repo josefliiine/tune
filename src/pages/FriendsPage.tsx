@@ -1,6 +1,7 @@
 import Header from '../components/Header';
 import UserSearch from '../components/UserSearch';
 import FriendRequests from '../components/FriendRequests';
+import MyFriends from '../components/MyFriends';
 
 const FriendsPage = () => {
   return (
@@ -11,6 +12,8 @@ const FriendsPage = () => {
         <UserSearch />
         <h2>Incoming Friend Requests</h2>
         <FriendRequests />
+        <h2>My friends</h2>
+        <MyFriends />
       </main>
     </div>
   );
