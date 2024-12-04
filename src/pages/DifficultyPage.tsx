@@ -8,6 +8,8 @@ const DifficultyPage = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [isQuizComplete, setIsQuizComplete] = useState<boolean>(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [score, setScore] = useState<number>(0);
 
   const handleDifficultySelect = (difficulty: string) => {
     setSelectedDifficulty(difficulty);
@@ -21,6 +23,20 @@ const DifficultyPage = () => {
       setQuizQuestions(shuffled.slice(0, 10));
     }
   }, [questions]);
+
+  const handleAnswerSelect = (answer: string) => {
+    setSelectedAnswer(answer);
+
+    // Check if answer is correct
+    if (answer === quizQuestions[currentQuestionIndex].correctAnswer) {
+      setScore(score + 1);
+    }
+
+    setTimeout(() => {
+      setSelectedAnswer(null);
+      handleNextQuestion();
+    }, 1000);
+  };
 
   const handleNextQuestion = () => {
     if (currentQuestionIndex < quizQuestions.length - 1) {
@@ -48,16 +64,39 @@ const DifficultyPage = () => {
           {error && <p>{error}</p>}
           {!loading && !error && isQuizComplete ? (
             <div>
-              <h2>Quiz ended!</h2>
+              <h2>Quiz Complete!</h2>
+              <p>Your score: {score} / 10</p>
             </div>
           ) : (
             quizQuestions.length > 0 && (
               <div>
                 <h2>Question {currentQuestionIndex + 1} of 10</h2>
                 <p>{quizQuestions[currentQuestionIndex]?.question}</p>
-                <button onClick={handleNextQuestion}>
-                  {currentQuestionIndex < quizQuestions.length - 1 ? "Next" : "Finish"}
-                </button>
+                <div className="answer-buttons">
+                  {quizQuestions[currentQuestionIndex]?.answers.map((answer, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleAnswerSelect(answer)}
+                      className={
+                        selectedAnswer
+                          ? answer === quizQuestions[currentQuestionIndex].correctAnswer
+                            ? "correct"
+                            : "incorrect"
+                          : ""
+                      }
+                      disabled={!!selectedAnswer}
+                    >
+                      {answer}
+                    </button>
+                  ))}
+                </div>
+                {selectedAnswer && (
+                  <p>
+                    {selectedAnswer === quizQuestions[currentQuestionIndex].correctAnswer
+                      ? "Correct!"
+                      : "Wrong!"}
+                  </p>
+                )}
               </div>
             )
           )}
