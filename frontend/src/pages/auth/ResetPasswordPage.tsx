@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { FirebaseError } from "firebase/app";
-import useAuth from "../../hooks/useAuth";
+import useAuth from "../../hooks/useAuth.ts";
 
 const ResetPasswordPage: React.FC = () => {
   const [email, setEmail] = useState<string>("");

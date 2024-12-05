@@ -16,14 +16,24 @@
   "author": "Josefine Pettersson",
   "license": "ISC",
   "devDependencies": {
+    "@eslint/js": "^9.16.0",
+    "@types/caseless": "^0.12.5",
+    "@types/connect": "^3.4.38",
     "@types/cors": "^2.8.17",
+    "@types/estree": "^1.0.6",
     "@types/express": "^4.17.21",
+    "@types/json-schema": "^7.0.15",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.11.5",
+    "@typescript-eslint/eslint-plugin": "^8.17.0",
+    "@typescript-eslint/parser": "^8.17.0",
     "cross-env": "^7.0.3",
+    "eslint": "^9.16.0",
+    "globals": "^15.13.0",
     "nodemon": "^3.0.3",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.17.0"
   },
   "dependencies": {
     "cors": "^2.8.5",

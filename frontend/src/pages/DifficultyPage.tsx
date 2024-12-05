@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import Header from "../components/Header";
-import useQuestionsByDifficulty from "../hooks/useQuestionsByDifficulty";
-import { Question } from "../types/Questions";
-import useRandomUser from "../hooks/useRandomUser";
+import Header from "../components/Header.tsx";
+import useQuestionsByDifficulty from "../hooks/useQuestionsByDifficulty.ts";
+import useMatchmaking from "../hooks/useMatchMaking.ts";
+import { Question } from "../types/Questions.ts";
 
-const DifficultyPage = () => {
+const DifficultyPage = ({ userId }: { userId: string }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
   const [gameMode, setGameMode] = useState<'self' | 'random' | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
@@ -13,13 +13,15 @@ const DifficultyPage = () => {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [score, setScore] = useState<number>(0);
 
-  const { user, loading, error } = useRandomUser();
+  const { status, opponent, loading } = useMatchmaking(userId);
 
   const handleDifficultySelect = (difficulty: string) => {
     setSelectedDifficulty(difficulty);
   };
 
-  const { questions, loading: questionsLoading, error: questionsError } = useQuestionsByDifficulty(selectedDifficulty || "");
+  const { questions, loading: questionsLoading, error: questionsError } = useQuestionsByDifficulty(
+    selectedDifficulty || ""
+  );
 
   useEffect(() => {
     if (questions.length > 0) {
@@ -68,18 +70,18 @@ const DifficultyPage = () => {
       ) : (
         <main className="main-content">
           <div className="game-mode-buttons">
-            <button onClick={() => handleGameModeChange('self')}>Play Against Yourself</button>
-            <button onClick={() => handleGameModeChange('random')}>Play Against Random User</button>
+            <button onClick={() => handleGameModeChange("self")}>Play Against Yourself</button>
+            <button onClick={() => handleGameModeChange("random")}>Play Against Random User</button>
           </div>
 
-          {gameMode === 'random' && (
+          {gameMode === "random" && (
             <div>
               {loading ? (
-                <p>Loading random user...</p>
-              ) : error ? (
-                <p>{error}</p>
+                <p>Looking for a match...</p>
+              ) : status === "matched" ? (
+                <p>Matched with user: {opponent}</p>
               ) : (
-                <p>Matched with user: {user?.email}</p>
+                <p>Waiting for a match...</p>
               )}
             </div>
           )}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
-import { Question } from "../types/Questions";
+import { Question } from "../types/Questions.ts";
 
 const useQuestionsByDifficulty = (difficulty: string) => {
     const [questions, setQuestions] = useState<Question[]>([]);

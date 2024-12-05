@@ -29,6 +29,7 @@ import React, {
     setEmail: (email: string) => Promise<void>;
     setPassword: (password: string) => Promise<void>;
     userEmail: string | null;
+    userId: string | null;
   }
   
   export const AuthContext = createContext<AuthContextType | null>(null);
@@ -37,6 +38,7 @@ import React, {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [userId, setUserId] = useState<string | null>(null);
   
     const login = (email: string, password: string): Promise<UserCredential> => {
       return signInWithEmailAndPassword(auth, email, password);
@@ -49,6 +51,7 @@ import React, {
     const reloadUser = (): boolean => {
       if (!currentUser) return false;
       setUserEmail(currentUser.email);
+      setUserId(currentUser.uid);
       return true;
     };
   
@@ -94,8 +97,10 @@ import React, {
         setCurrentUser(user);
         if (user) {
           setUserEmail(user.email);
+          setUserId(user.uid);
         } else {
           setUserEmail(null);
+          setUserId(null);
         }
         setLoading(false);
       });
@@ -116,6 +121,7 @@ import React, {
           setPassword,
           signup,
           userEmail,
+          userId,
         }}
       >
         {children}

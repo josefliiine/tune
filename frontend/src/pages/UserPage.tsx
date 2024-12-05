@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { getAuth, updateProfile } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
-import Header from "../components/Header";
+import Header from "../components/Header.tsx";
 
 const UserPage = () => {
   const [userName, setUserName] = useState<string>("");
