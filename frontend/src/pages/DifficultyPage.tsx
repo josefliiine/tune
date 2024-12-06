@@ -55,7 +55,9 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   const handleGameModeChange = async (mode: 'self' | 'random') => {
     setGameMode(mode);
     const questions = await fetchQuestions(selectedDifficulty || "");
-    setQuizQuestions(questions);
+    const totalQuestions = 10;
+    console.log("Fetched questions:", questions.length);
+    setQuizQuestions(questions.slice(0, totalQuestions));
 
     if (mode === "self") {
       const newGameId = `random-${userId}-${Date.now()}`;

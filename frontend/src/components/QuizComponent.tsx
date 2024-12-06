@@ -118,7 +118,7 @@ const QuizComponent = ({
           <button
             key={index}
             onClick={() => handleAnswerSelect(answer)}
-            disabled={waitingForOpponent || !!selectedAnswer}
+            disabled={ isQuizComplete || waitingForOpponent || !!selectedAnswer}
           >
             {answer}
           </button>
