@@ -1,4 +1,4 @@
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onDocumentCreated, onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 
 admin.initializeApp();
@@ -28,18 +28,25 @@ export const matchPlayers = onDocumentCreated(
           opponent: userId,
         });
 
-        const gameRef = await admin
-          .firestore()
-          .collection("games")
-          .add({
-            player1: userId,
-            player2: matchedUser,
-            status: "started",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
+        const gameId = `random-${userId}-${Date.now()}`;
+        const gameRef = admin.firestore().collection("games").doc(gameId);
 
-        console.log(`New game created with ID: ${gameRef.id}`);
-        return gameRef.id;
+        const totalQuestions = 10; 
+
+        await gameRef.set({
+          player1: userId,
+          player2: matchedUser,
+          status: "started",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          player1Answered: false,
+          player2Answered: false,
+          currentQuestionIndex: 0,
+          questions: [],
+          questionsCount: totalQuestions
+        });
+
+        console.log(`New game created with ID: ${gameId}`);
+        return gameId;
       } else {
         console.log(
           `No match found for user ${userId}, they remain waiting.`
@@ -53,3 +60,18 @@ export const matchPlayers = onDocumentCreated(
     }
   }
 );
+
+export const cleanUpGame = onDocumentWritten("games/{gameId}", async (event) => {
+  const after = event.data?.after;
+  if (!after?.exists) {
+    return;
+  }
+
+  const gameData = after.data()!;
+  const totalQuestions = gameData.questionsCount || 10;
+
+  if (gameData.currentQuestionIndex >= totalQuestions) {
+    await after.ref.delete();
+    console.log(`Game ${event.params.gameId} deleted after finishing the quiz.`);
+  }
+});

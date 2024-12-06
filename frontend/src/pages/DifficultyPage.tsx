@@ -1,59 +1,106 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header.tsx";
-import useQuestionsByDifficulty from "../hooks/useQuestionsByDifficulty.ts";
 import useMatchmaking from "../hooks/useMatchMaking.ts";
+import { getFirestore, query, collection, where, getDocs, doc, setDoc } from "firebase/firestore";
+import QuizComponent from "../components/QuizComponent.tsx";
 import { Question } from "../types/Questions.ts";
 
 const DifficultyPage = ({ userId }: { userId: string }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
   const [gameMode, setGameMode] = useState<'self' | 'random' | null>(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
+  const [isGameReady, setIsGameReady] = useState(false);
+  const [gameId, setGameId] = useState<string | null>(null);
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
-  const [isQuizComplete, setIsQuizComplete] = useState<boolean>(false);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [score, setScore] = useState<number>(0);
+  const { status, opponent, loading: matchmakingLoading } = useMatchmaking(userId);
 
-  const { status, opponent, loading } = useMatchmaking(userId);
+  const db = getFirestore();
 
   const handleDifficultySelect = (difficulty: string) => {
     setSelectedDifficulty(difficulty);
   };
 
-  const { questions, loading: questionsLoading, error: questionsError } = useQuestionsByDifficulty(
-    selectedDifficulty || ""
-  );
+  const fetchQuestions = async (difficulty: string) => {
+    const questionsQuery = query(collection(db, "questions"), where("difficulty", "==", difficulty));
+    const querySnapshot = await getDocs(questionsQuery);
+    const questions: Question[] = querySnapshot.docs.map((doc) => doc.data() as Question);
+    return questions;
+  };
+
+  const tryFindGame = async () => {
+    if (!opponent) return;
+
+    console.log("Trying to find game for players:", userId, opponent);
+    const q = query(
+      collection(db, "games"),
+      where("player1", "in", [userId, opponent]),
+      where("player2", "in", [userId, opponent]),
+      where("status", "==", "started"),
+      where("currentQuestionIndex", "==", 0)
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const foundGameId = querySnapshot.docs[0].id;
+      console.log("Game found:", foundGameId);
+      setGameId(foundGameId);
+      setIsGameReady(true);
+    } else {
+      console.log("No game found yet for these players. Retrying in 1s...");
+      setTimeout(() => {
+        tryFindGame();
+      }, 1000);
+    }
+  };
+
+  const handleGameModeChange = async (mode: 'self' | 'random') => {
+    setGameMode(mode);
+    const questions = await fetchQuestions(selectedDifficulty || "");
+    setQuizQuestions(questions);
+
+    if (mode === "self") {
+      const newGameId = `random-${userId}-${Date.now()}`;
+      const gameRef = doc(db, "games", newGameId);
+      await setDoc(gameRef, {
+        player1: userId,
+        player2: userId,
+        status: "started",
+        createdAt: new Date(),
+        player1Answered: false,
+        player2Answered: false,
+        currentQuestionIndex: 0,
+        questions: []
+      });
+
+      setGameId(newGameId);
+      setIsGameReady(true);
+    } else if (mode === "random") {
+      if (status === 'matched' && opponent) {
+        await tryFindGame();
+      }
+    }
+  };
 
   useEffect(() => {
-    if (questions.length > 0) {
-      const shuffled = [...questions].sort(() => Math.random() - 0.5);
-      setQuizQuestions(shuffled.slice(0, 10));
+    if (gameMode === 'random' && status === 'matched' && selectedDifficulty && opponent && !isGameReady && !gameId) {
+      console.log("Matched found, trying to get gameId...");
+      tryFindGame();
     }
-  }, [questions]);
+  }, [gameMode, status, selectedDifficulty, opponent, userId, db, gameId, isGameReady]);
 
-  const handleGameModeChange = (mode: 'self' | 'random') => {
-    setGameMode(mode);
-  };
-
-  const handleAnswerSelect = (answer: string) => {
-    setSelectedAnswer(answer);
-
-    if (answer === quizQuestions[currentQuestionIndex].correctAnswer) {
-      setScore(score + 1);
-    }
-
-    setTimeout(() => {
-      setSelectedAnswer(null);
-      handleNextQuestion();
-    }, 1000);
-  };
-
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < quizQuestions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
-      setIsQuizComplete(true);
-    }
-  };
+  if (isGameReady && gameId) {
+    return (
+      <div className="quiz-page">
+        <Header />
+        <QuizComponent
+          gameId={gameId}
+          userId={userId}
+          opponent={opponent}
+          gameMode={gameMode}
+          quizQuestions={quizQuestions}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="difficulty-page">
@@ -69,6 +116,7 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
         </main>
       ) : (
         <main className="main-content">
+          <h1>Choose Game Mode</h1>
           <div className="game-mode-buttons">
             <button onClick={() => handleGameModeChange("self")}>Play Against Yourself</button>
             <button onClick={() => handleGameModeChange("random")}>Play Against Random User</button>
@@ -76,7 +124,7 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
 
           {gameMode === "random" && (
             <div>
-              {loading ? (
+              {matchmakingLoading ? (
                 <p>Looking for a match...</p>
               ) : status === "matched" ? (
                 <p>Matched with user: {opponent}</p>
@@ -84,47 +132,6 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
                 <p>Waiting for a match...</p>
               )}
             </div>
-          )}
-
-          {questionsLoading && <p>Loading questions...</p>}
-          {questionsError && <p>{questionsError}</p>}
-          {!questionsLoading && !questionsError && isQuizComplete ? (
-            <div>
-              <h2>Quiz Complete!</h2>
-              <p>Your score: {score} / 10</p>
-            </div>
-          ) : (
-            quizQuestions.length > 0 && (
-              <div>
-                <h2>Question {currentQuestionIndex + 1} of 10</h2>
-                <p>{quizQuestions[currentQuestionIndex]?.question}</p>
-                <div className="answer-buttons">
-                  {quizQuestions[currentQuestionIndex]?.answers.map((answer, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleAnswerSelect(answer)}
-                      className={
-                        selectedAnswer
-                          ? answer === quizQuestions[currentQuestionIndex].correctAnswer
-                            ? "correct"
-                            : "incorrect"
-                          : ""
-                      }
-                      disabled={!!selectedAnswer}
-                    >
-                      {answer}
-                    </button>
-                  ))}
-                </div>
-                {selectedAnswer && (
-                  <p>
-                    {selectedAnswer === quizQuestions[currentQuestionIndex].correctAnswer
-                      ? "Correct!"
-                      : "Wrong!"}
-                  </p>
-                )}
-              </div>
-            )
           )}
         </main>
       )}

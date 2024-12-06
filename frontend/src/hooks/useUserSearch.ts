@@ -26,16 +26,16 @@ const useUserSearch = () => {
       const querySnapshot = await getDocs(q);
 
       const users: User[] = querySnapshot.docs.map((doc) => {
-        const data = doc.data() as Omit<User, "id">; // Exkludera `id` från typen här
+        const data = doc.data() as Omit<User, "id">;
         return {
-          id: doc.id, // Lägg till `id` separat
-          ...data, // Lägg till resten av fälten från `data`
+          id: doc.id,
+          ...data,
         };
       });
 
       setSearchResults(users);
     } catch (e) {
-      console.error(e); // Loggar felet för debug-syften
+      console.error(e);
       setError("Error searching for users.");
     } finally {
       setLoading(false);
