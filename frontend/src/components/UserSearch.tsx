@@ -38,10 +38,7 @@ const UserSearch = () => {
         timestamp: serverTimestamp(),
       });
 
-      setFriendRequests((prev) => [
-        ...prev,
-        { friendId, displayName },
-      ]);
+      setFriendRequests((prev) => [...prev, { friendId, displayName }]);
       console.log("Friend request sent!");
     } catch (error) {
       console.error("Error sending friend request:", error);
@@ -67,9 +64,9 @@ const UserSearch = () => {
       <ul>
         {searchResults.map((user) => (
           <li key={user.id}>
-            {user.displayName} - {user.email}
+            {user.displayName ?? "Unknown"} - {user.email}
             <button
-              onClick={() => addFriend(user.id, user.displayName)}
+              onClick={() => addFriend(user.id, user.displayName ?? "Unknown")}
               disabled={friendRequests.some((req) => req.friendId === user.id)}
             >
               {friendRequests.some((req) => req.friendId === user.id)

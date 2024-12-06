@@ -10,7 +10,6 @@ import FriendsPage from "./pages/FriendsPage.tsx";
 import DifficultyPage from "./pages/DifficultyPage.tsx";
 import useAuth from "./hooks/useAuth.ts";
 
-
 function App() {
 
   return (

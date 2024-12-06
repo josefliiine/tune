@@ -1,8 +1,14 @@
 import { useState } from "react";
 import { getFirestore, query, collection, where, getDocs } from "firebase/firestore";
 
+interface User {
+  id: string;
+  email?: string;
+  displayName?: string;
+}
+
 const useUserSearch = () => {
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,12 +25,17 @@ const useUserSearch = () => {
       );
       const querySnapshot = await getDocs(q);
 
-      const users: any[] = [];
-      querySnapshot.forEach((doc) => {
-        users.push({ id: doc.id, ...doc.data() });
+      const users: User[] = querySnapshot.docs.map((doc) => {
+        const data = doc.data() as Omit<User, "id">; // Exkludera `id` från typen här
+        return {
+          id: doc.id, // Lägg till `id` separat
+          ...data, // Lägg till resten av fälten från `data`
+        };
       });
+
       setSearchResults(users);
-    } catch (error) {
+    } catch (e) {
+      console.error(e); // Loggar felet för debug-syften
       setError("Error searching for users.");
     } finally {
       setLoading(false);
