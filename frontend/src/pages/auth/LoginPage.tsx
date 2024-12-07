@@ -35,10 +35,10 @@ const LoginPage: React.FC = () => {
   return (
     <div className="form-page">
       <div className="form-box">
-        <h2>Log in to Tune</h2>
+        <h2 className="h2-loginpage">Log in to Tune</h2>
         {error && <p className="error">{error}</p>}
         <form onSubmit={handleSubmit}>
-          <label htmlFor="email">Email:</label>
+          <label htmlFor="email" className="label-loginpage">Email:</label>
           <input
             type="email"
             id="email"
@@ -46,7 +46,7 @@ const LoginPage: React.FC = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <label htmlFor="password">Password:</label>
+          <label htmlFor="password" className="label-loginpage">Password:</label>
           <input
             type="password"
             id="password"
@@ -54,16 +54,16 @@ const LoginPage: React.FC = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <button type="submit" disabled={isSubmitting}>
+          <button type="submit" className="button-loginpage" disabled={isSubmitting}>
             {isSubmitting ? "Logging in..." : "Log in"}
           </button>
         </form>
         <div className="links">
-          <p>
-            You don't have an account? <Link to="/signup">Sign up</Link>
+          <p className="p-loginpage">
+            You don't have an account? <Link to="/signup" className="link-loginpage">Sign up</Link>
           </p>
-          <p>
-            Forgot your password? <Link to="/forgot-password">Reset password</Link>
+          <p className="p-loginpage">
+            Forgot your password? <Link to="/forgot-password" className="link-loginpage">Reset password</Link>
           </p>
         </div>
       </div>

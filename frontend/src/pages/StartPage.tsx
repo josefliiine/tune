@@ -12,8 +12,8 @@ const StartPage = () => {
     <div className="start-page">
       <Header />
       <main className="main-content">
-        <p className="main-text">Let's see if you are the ultimate Tune master!</p>
-        <button className="button" onClick={handleStartGame}>Start Game</button>
+        <p className="main-text">Let’s find out if you're a tune master… or a tune disaster!</p>
+        <button className="button-start-page" onClick={handleStartGame}>Start Game</button>
       </main>
     </div>
   );

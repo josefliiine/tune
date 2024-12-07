@@ -92,7 +92,18 @@ const UserPage = () => {
             <div className="placeholder">No image selected</div>
           )}
         </div>
-        <input type="file" id="profile-image" accept="image/*" onChange={handleFileChange} />
+        <div className="file-input-container">
+          <label htmlFor="profile-image" className="custom-file-input">
+            {profileImage ? profileImage.name : "Choose a file"}
+          </label>
+          <input
+            type="file"
+            id="profile-image"
+            accept="image/*"
+            onChange={handleFileChange}
+            hidden
+          />
+        </div>
       </div>
 
       <div className="profile-form-container">
@@ -110,7 +121,7 @@ const UserPage = () => {
             />
           </div>
 
-          <button type="submit" disabled={isSubmitting}>
+          <button type="submit" className="button-user-page" disabled={isSubmitting}>
             {isSubmitting ? "Updating profile..." : "Save Changes"}
           </button>
         </form>

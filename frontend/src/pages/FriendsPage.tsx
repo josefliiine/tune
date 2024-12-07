@@ -7,13 +7,13 @@ const FriendsPage = () => {
   return (
     <div className="start-page">
       <Header />
-      <main className="main-content">
-        <h2>Search for friends</h2>
-        <UserSearch />
-        <h2>Incoming Friend Requests</h2>
-        <FriendRequests />
-        <h2>My friends</h2>
+      <main className="main-content-friends">
+        <h2 className='friends-h2'>My friends</h2>
         <MyFriends />
+        <h2 className='friends-h2'>Search for friends</h2>
+        <UserSearch />
+        <h2 className='friends-h2'>Incoming Friend Requests</h2>
+        <FriendRequests />
       </main>
     </div>
   );

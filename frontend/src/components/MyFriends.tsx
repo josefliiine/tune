@@ -28,7 +28,6 @@ const MyFriends = () => {
 
   return (
     <div>
-      <h2>My Friends</h2>
       <ul>
         {friends.map((friend) => (
           <li key={friend.id}>
