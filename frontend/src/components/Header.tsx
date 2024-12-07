@@ -1,10 +1,18 @@
+import { useContext } from "react";
+import { UserContext } from "../contexts/UserContext";
 import { motion } from "framer-motion";
 import HamburgerMenu from "./HamburgerMenu";
 import tuneLogo from '../assets/images/tune-logo-record.png';
 
 const Header = () => {
-    return (
-      <header className="header">
+  const { userName, userEmail, photoURL } = useContext(UserContext);
+  console.log("Header - UserName:", userName);
+  console.log("Header - UserEmail:", userEmail);
+  console.log("Header - PhotoURL:", photoURL);
+
+  return (
+    <header className="header">
+      <div className="header-left">
         <motion.img
           src={tuneLogo}
           alt="Tune Logo"
@@ -12,9 +20,18 @@ const Header = () => {
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
         />
+      </div>
+      <div className="header-right">
+        <span className="user-info">
+          {userName ? userName : userEmail}
+        </span>
+        {photoURL && (
+          <img src={photoURL} alt="Profile" className="profile-image" />
+        )}
         <HamburgerMenu />
-      </header>
-    );
+      </div>
+    </header>
+  );
 };
 
 export default Header;

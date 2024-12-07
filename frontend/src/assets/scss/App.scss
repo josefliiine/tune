@@ -11,7 +11,7 @@ body {
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background: linear-gradient(to top right, #990033, #EED6C4);
+  background: linear-gradient(to top right, #CC5500 80%, #FDF5E6 80%);
 }
 
 .container {
@@ -90,23 +90,19 @@ body {
   width: 100vw;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-}
-
 .menu-button {
   background: none;
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #990033;
+  color: #CC5500;
   margin: 10px;
   font-size: 3rem;
 }
 
 .menu-button:hover{
   background: none;
+  color: #913d01;
 }
 
 .main-content {
@@ -126,8 +122,8 @@ body {
 }
 
 .menu {
-  background-color: #EED6C4;
-  border: 1px solid #B03060;
+  background-color: #FDF5E6;
+  border: 3px solid #CC5500;
   width: 100px;
   text-align: left;
   padding: 1rem;
@@ -157,15 +153,17 @@ body {
   background: none;
   border: none;
   font-size: 2rem;
-  color: #B03060;
+  color: #CC5500;
   cursor: pointer;
   position: absolute;
   top: -20px;
-  right: -20px;
+  right: -10px;
+  margin-top: 10px;
+  margin-right: 5px;
 }
 
 .close-button:hover {
-  color: #000;
+  color: #913d01;
   background: none;
 }
 
@@ -411,6 +409,49 @@ button {
 button:hover {
   background-color: #990033;
   color: #FDF5E6;
+}
+
+/* Header */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  width: 100%; 
+  box-sizing: border-box;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.logo-header {
+  width: 60px;
+  height: auto;
+  margin-right: 15px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.user-info {
+  font-weight: bold;
+  font-size: 1em;
+  color: black;
+  margin-right: 10px;
+}
+
+.profile-image {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 15px;
+  border: 1px solid black;
 }
 
 /* Bigger screens */
