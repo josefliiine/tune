@@ -19,27 +19,36 @@ const useFriendRequests = (currentUserId: string | null) => {
 
   const acceptFriendRequest = async (requestId: string, userId: string, friendId: string) => {
     try {
-        await updateDoc(doc(db, "friends", requestId), { status: "accepted" });
+      await updateDoc(doc(db, "friends", requestId), { status: "accepted" });
 
-        // Add user to friends list for both users
-        const friendsListCollection = collection(db, "friendsList");
-        await Promise.all([
-            addDoc(friendsListCollection, { userId, friendId }),
-        ]);
+      const friendsListCollection = collection(db, "friendsList");
+
+      // Add both users in eachothers friends list
+      await Promise.all([
+        addDoc(friendsListCollection, { userId, friendId }),
+        addDoc(friendsListCollection, { userId: friendId, friendId: userId }),
+      ]);
+
+      console.log(`Vänförfrågan mellan ${userId} och ${friendId} har accepterats.`);
+
+      setRequests(prevRequests => prevRequests.filter(request => request.id !== requestId));
     } catch (error) {
-        console.error("Failed to accept friend request:", error);
-        throw error;
+      console.error("Misslyckades med att acceptera vänförfrågan:", error);
+      throw error;
     }
-};
+  };
 
-const rejectFriendRequest = async (requestId: string) => {
+  const rejectFriendRequest = async (requestId: string) => {
     try {
-        await deleteDoc(doc(db, "friends", requestId));
+      await deleteDoc(doc(db, "friends", requestId));
+      console.log(`Vänförfrågan ${requestId} har avslagats.`);
+
+      setRequests(prevRequests => prevRequests.filter(request => request.id !== requestId));
     } catch (error) {
-        console.error("Failed to reject friend request:", error);
-        throw error;
+      console.error("Failed to reject friend request:", error);
+      throw error;
     }
-}
+  };
 
   useEffect(() => {
     if (!currentUserId) return;
