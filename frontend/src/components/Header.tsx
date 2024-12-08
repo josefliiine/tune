@@ -6,9 +6,6 @@ import tuneLogo from '../assets/images/tune-logo-record.png';
 
 const Header = () => {
   const { userName, userEmail, photoURL } = useContext(UserContext);
-  console.log("Header - UserName:", userName);
-  console.log("Header - UserEmail:", userEmail);
-  console.log("Header - PhotoURL:", photoURL);
 
   return (
     <header className="header">

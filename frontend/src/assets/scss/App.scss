@@ -454,6 +454,15 @@ button:hover {
   border: 1px solid black;
 }
 
+/* DifficultyPage */
+
+.difficulty-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
 /* Bigger screens */
 
 @media (min-width: 768px) {

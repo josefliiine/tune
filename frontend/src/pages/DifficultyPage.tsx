@@ -20,13 +20,20 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   };
 
   const fetchQuestions = async (difficulty: string) => {
-    const questionsQuery = query(collection(db, "questions"), where("difficulty", "==", difficulty));
-    const querySnapshot = await getDocs(questionsQuery);
-    const questions: Question[] = querySnapshot.docs.map((doc) => doc.data() as Question);
-    return questions;
+    try {
+      const response = await fetch(`http://localhost:3001/api/questions?difficulty=${difficulty}`);
+      if (!response.ok) {
+        throw new Error('Något gick fel med att hämta frågorna.');
+      }
+      const questions: Question[] = await response.json();
+      return questions;
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
   };
 
-  const tryFindGame = async () => {
+  const tryFindGame = async (attempt = 1) => {
     if (!opponent) return;
 
     console.log("Trying to find game for players:", userId, opponent);
@@ -45,10 +52,11 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
       setGameId(foundGameId);
       setIsGameReady(true);
     } else {
-      console.log("No game found yet for these players. Retrying in 1s...");
+      const delay = Math.min(1000 * 2 ** attempt, 30000); // Max 30 sekunder
+      console.log(`No game found yet for these players. Retrying in ${delay / 1000}s...`);
       setTimeout(() => {
-        tryFindGame();
-      }, 1000);
+        tryFindGame(attempt + 1);
+      }, delay);
     }
   };
 
@@ -60,7 +68,7 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
     setQuizQuestions(questions.slice(0, totalQuestions));
 
     if (mode === "self") {
-      const newGameId = `random-${userId}-${Date.now()}`;
+      const newGameId = `self-${userId}-${Date.now()}`;
       const gameRef = doc(db, "games", newGameId);
       await setDoc(gameRef, {
         player1: userId,
@@ -107,36 +115,38 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   return (
     <div className="difficulty-page">
       <Header />
-      {!selectedDifficulty ? (
-        <main className="main-content">
-          <h1>Choose Difficulty</h1>
-          <div className="difficulty-buttons">
-            <button onClick={() => handleDifficultySelect("Easy")}>Easy</button>
-            <button onClick={() => handleDifficultySelect("Intermediate")}>Intermediate</button>
-            <button onClick={() => handleDifficultySelect("Hard")}>Hard</button>
-          </div>
-        </main>
-      ) : (
-        <main className="main-content">
-          <h1>Choose Game Mode</h1>
-          <div className="game-mode-buttons">
-            <button onClick={() => handleGameModeChange("self")}>Play Against Yourself</button>
-            <button onClick={() => handleGameModeChange("random")}>Play Against Random User</button>
-          </div>
-
-          {gameMode === "random" && (
-            <div>
-              {matchmakingLoading ? (
-                <p>Looking for a match...</p>
-              ) : status === "matched" ? (
-                <p>Matched with user: {opponent}</p>
-              ) : (
-                <p>Waiting for a match...</p>
-              )}
+      <main className="main-content">
+        {!selectedDifficulty ? (
+          <>
+            <h1>Choose Difficulty</h1>
+            <div className="difficulty-buttons">
+              <button onClick={() => handleDifficultySelect("Easy")}>Easy</button>
+              <button onClick={() => handleDifficultySelect("Intermediate")}>Intermediate</button>
+              <button onClick={() => handleDifficultySelect("Hard")}>Hard</button>
             </div>
-          )}
-        </main>
-      )}
+          </>
+        ) : (
+          <>
+            <h1>Choose Game Mode</h1>
+            <div className="game-mode-buttons">
+              <button onClick={() => handleGameModeChange("self")}>Play Against Yourself</button>
+              <button onClick={() => handleGameModeChange("random")}>Play Against Random User</button>
+            </div>
+
+            {gameMode === "random" && (
+              <div>
+                {matchmakingLoading ? (
+                  <p>Looking for a match...</p>
+                ) : status === "matched" ? (
+                  <p>Matched with user: {opponent}</p>
+                ) : (
+                  <p>Waiting for a match...</p>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </main>
     </div>
   );
 };
