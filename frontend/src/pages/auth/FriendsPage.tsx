@@ -1,7 +1,7 @@
-import Header from '../components/Header.tsx';
-import UserSearch from '../components/UserSearch.tsx';
-import FriendRequests from '../components/FriendRequests.tsx';
-import MyFriends from '../components/MyFriends.tsx';
+import Header from '../../components/Header.tsx';
+import UserSearch from '../../components/UserSearch.tsx';
+import FriendRequests from '../../components/FriendRequests.tsx';
+import MyFriends from '../../components/MyFriends.tsx';
 
 const FriendsPage = () => {
   return (

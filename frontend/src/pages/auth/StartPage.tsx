@@ -1,4 +1,4 @@
-import Header from '../components/Header.tsx';
+import Header from '../../components/Header';
 import { useNavigate } from 'react-router-dom';
 
 const StartPage = () => {

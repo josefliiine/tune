@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import Header from "../components/Header.tsx";
-import useMatchmaking from "../hooks/useMatchMaking.ts";
+import Header from "../../components/Header.tsx";
+import useMatchmaking from "../../hooks/useMatchMaking.ts";
 import { getFirestore, query, collection, where, getDocs, doc, setDoc } from "firebase/firestore";
-import QuizComponent from "../components/QuizComponent.tsx";
-import { Question } from "../types/Questions.ts";
+import QuizComponent from "../../components/QuizComponent.tsx";
+import { Question } from "../../types/Questions.ts";
 
 const DifficultyPage = ({ userId }: { userId: string }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
