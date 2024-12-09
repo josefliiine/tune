@@ -1,5 +1,9 @@
 import express from "express";
 import questionsRouter from './questions';
+import matchPlayersRouter from './matchPlayers';
+import someProtectedRoute from './someProtectedRoute';
+import gamesRouter from './games'
+
 const router = express.Router();
 
 router.get("/", (req, res) => {
@@ -9,6 +13,9 @@ router.get("/", (req, res) => {
 });
 
 router.use('/questions', questionsRouter);
+router.use('/match', matchPlayersRouter);
+router.use('/protected', someProtectedRoute);
+router.use('/games', gamesRouter);
 
 router.use((req, res) => {
     res.status(404).send({

@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import Header from "../../components/Header.tsx";
-import useMatchmaking from "../../hooks/useMatchMaking.ts";
-import { getFirestore, query, collection, where, getDocs, doc, setDoc } from "firebase/firestore";
-import QuizComponent from "../../components/QuizComponent.tsx";
-import { Question } from "../../types/Questions.ts";
+import Header from "../../components/Header";
+import QuizComponent from "../../components/QuizComponent";
+import { Question } from "../../types/Questions";
+import api from '../../api/axiosConfig';
+import { getIdToken } from "../../utils/getIdToken";
+import axios from 'axios';
 
 const DifficultyPage = ({ userId }: { userId: string }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
@@ -11,52 +12,81 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   const [isGameReady, setIsGameReady] = useState(false);
   const [gameId, setGameId] = useState<string | null>(null);
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
-  const { status, opponent, loading: matchmakingLoading } = useMatchmaking(userId);
-
-  const db = getFirestore();
-
+  const [opponent, setOpponent] = useState<string | null>(null);
+  const [matchmakingLoading, setMatchmakingLoading] = useState<boolean>(false);
+  
   const handleDifficultySelect = (difficulty: string) => {
     setSelectedDifficulty(difficulty);
   };
 
   const fetchQuestions = async (difficulty: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/questions?difficulty=${difficulty}`);
-      if (!response.ok) {
-        throw new Error('Något gick fel med att hämta frågorna.');
-      }
-      const questions: Question[] = await response.json();
-      return questions;
+      const response = await api.get('/questions', {
+        params: { difficulty },
+        headers: {
+          'Authorization': `Bearer ${await getIdToken()}`
+        }
+      });
+      return response.data as Question[];
     } catch (error) {
-      console.error(error);
+      if (axios.isAxiosError(error)) {
+        console.error('Error fetching questions:', error.response?.data);
+      } else {
+        console.error('Error fetching questions:', error);
+      }
       return [];
     }
   };
 
-  const tryFindGame = async (attempt = 1) => {
-    if (!opponent) return;
-
-    console.log("Trying to find game for players:", userId, opponent);
-    const q = query(
-      collection(db, "games"),
-      where("player1", "in", [userId, opponent]),
-      where("player2", "in", [userId, opponent]),
-      where("status", "==", "started"),
-      where("currentQuestionIndex", "==", 0)
-    );
-    const querySnapshot = await getDocs(q);
-
-    if (!querySnapshot.empty) {
-      const foundGameId = querySnapshot.docs[0].id;
-      console.log("Game found:", foundGameId);
-      setGameId(foundGameId);
+  const createSelfGame = async () => {
+    try {
+      const response = await api.post('/games', {
+        gameMode: 'self',
+        userId,
+        difficulty: selectedDifficulty,
+      }, {
+        headers: {
+          'Authorization': `Bearer ${await getIdToken()}`
+        }
+      });
+      setGameId(response.data.gameId);
+      setQuizQuestions(response.data.quizQuestions);
       setIsGameReady(true);
-    } else {
-      const delay = Math.min(1000 * 2 ** attempt, 30000); // Max 30 sekunder
-      console.log(`No game found yet for these players. Retrying in ${delay / 1000}s...`);
-      setTimeout(() => {
-        tryFindGame(attempt + 1);
-      }, delay);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Error creating self game:', error.response?.data);
+      } else {
+        console.error('Error creating self game:', error);
+      }
+    }
+  };
+
+  const joinRandomGame = async () => {
+    setMatchmakingLoading(true);
+    try {
+      const response = await api.post('/match/join', {
+        userId,
+        difficulty: selectedDifficulty,
+      }, {
+        headers: {
+          'Authorization': `Bearer ${await getIdToken()}`
+        }
+      });
+      if (response.data.gameId) {
+        setGameId(response.data.gameId);
+        setQuizQuestions(response.data.quizQuestions);
+        setIsGameReady(true);
+      } else {
+        setOpponent(response.data.opponent);
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Error joining random game:', error.response?.data);
+      } else {
+        console.error('Error joining random game:', error);
+      }
+    } finally {
+      setMatchmakingLoading(false);
     }
   };
 
@@ -64,38 +94,17 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
     setGameMode(mode);
     const questions = await fetchQuestions(selectedDifficulty || "");
     const totalQuestions = 10;
-    console.log("Fetched questions:", questions.length);
     setQuizQuestions(questions.slice(0, totalQuestions));
 
     if (mode === "self") {
-      const newGameId = `self-${userId}-${Date.now()}`;
-      const gameRef = doc(db, "games", newGameId);
-      await setDoc(gameRef, {
-        player1: userId,
-        player2: userId,
-        status: "started",
-        createdAt: new Date(),
-        player1Answered: false,
-        player2Answered: false,
-        currentQuestionIndex: 0,
-        questions: []
-      });
-
-      setGameId(newGameId);
-      setIsGameReady(true);
+      await createSelfGame();
     } else if (mode === "random") {
-      if (status === 'matched' && opponent) {
-        await tryFindGame();
-      }
+      await joinRandomGame();
     }
   };
 
   useEffect(() => {
-    if (gameMode === 'random' && status === 'matched' && selectedDifficulty && opponent && !isGameReady && !gameId) {
-      console.log("Matched found, trying to get gameId...");
-      tryFindGame();
-    }
-  }, [gameMode, status, selectedDifficulty, opponent, userId, db, gameId, isGameReady]);
+  }, [gameMode, isGameReady]);
 
   if (isGameReady && gameId) {
     return (
@@ -137,7 +146,7 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
               <div>
                 {matchmakingLoading ? (
                   <p>Looking for a match...</p>
-                ) : status === "matched" ? (
+                ) : opponent ? (
                   <p>Matched with user: {opponent}</p>
                 ) : (
                   <p>Waiting for a match...</p>

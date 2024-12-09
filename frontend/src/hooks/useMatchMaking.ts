@@ -1,45 +1,36 @@
 import { useState, useEffect } from "react";
-import { getFirestore, doc, setDoc, onSnapshot, deleteDoc } from "firebase/firestore";
+import axios from 'axios';
+import { getIdToken } from "../utils/getIdToken";
 
 const useMatchmaking = (userId: string) => {
-  const [status, setStatus] = useState<"waiting" | "matched" | null>(null);
+  const [status, setStatus] = useState<'waiting' | 'matched' | null>(null);
   const [opponent, setOpponent] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const db = getFirestore();
-    const userRef = doc(db, "waitingList", userId);
-
-    const startMatchmaking = async () => {
+    const checkMatchStatus = async () => {
       setLoading(true);
       try {
-        // Add user to waitinglist
-        await setDoc(userRef, { status: "waiting" });
+        const response = await axios.get(`/api/match/status`, {
+          headers: {
+            'Authorization': `Bearer ${await getIdToken()}`
+          },
+          params: { userId }
+        });
+        setStatus(response.data.status);
+        setOpponent(response.data.opponent || null);
       } catch (error) {
-        console.error("Error adding user to waiting list:", error);
+        console.error('Error checking match status:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    startMatchmaking();
+    const interval = setInterval(() => {
+      checkMatchStatus();
+    }, 5000);
 
-    const unsubscribe = onSnapshot(userRef, (docSnapshot) => {
-      const data = docSnapshot.data();
-      if (data?.status === "matched") {
-        setStatus("matched");
-        setOpponent(data.opponent);
-      } else {
-        setStatus("waiting");
-      }
-    });
-
-    return () => {
-      unsubscribe();
-      deleteDoc(userRef).catch((error) =>
-        console.error("Error removing user from waiting list:", error)
-      );
-    };
+    return () => clearInterval(interval);
   }, [userId]);
 
   return { status, opponent, loading };
