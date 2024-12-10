@@ -23,7 +23,7 @@ export interface IGame extends Document {
 const GameSchema: Schema = new Schema({
   gameId: { type: String, required: true, unique: true },
   player1: { type: String, required: true },
-  player2: { type: String, required: true },
+  player2: { type: String, required: false, default: null },
   status: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   player1Answered: { type: Boolean, default: false },

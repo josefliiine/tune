@@ -93,18 +93,18 @@ const QuizComponent = ({
     if (isQuizComplete || selectedAnswer) {
       return;
     }
-
+  
     setSelectedAnswer(answer);
     setIsPollingActive(false);
-
+  
     const currentQ = quizQuestions[currentQuestionIndex];
     const correct = currentQ.correctAnswer === answer;
     setIsCorrect(correct);
-
+  
     if (correct) {
       setScore((prevScore) => prevScore + 1);
     }
-
+  
     try {
       await api.post(
         `/games/${gameId}/answer`,
@@ -114,13 +114,23 @@ const QuizComponent = ({
         },
         {
           headers: {
-            Authorization: `Bearer ${await getIdToken()}`,
+            'Authorization': `Bearer ${await getIdToken()}`,
           },
         }
       );
-
+  
       if (gameMode === "self") {
         if (currentQuestionIndex + 1 < quizQuestions.length) {
+          await api.put(
+            `/games/${gameId}/next-question`,
+            {},
+            {
+              headers: {
+                'Authorization': `Bearer ${await getIdToken()}`,
+              },
+            }
+          );
+  
           setTimeout(() => {
             setCurrentQuestionIndex((prev) => prev + 1);
             setSelectedAnswer(null);
