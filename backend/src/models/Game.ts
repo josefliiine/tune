@@ -17,8 +17,8 @@ export interface IGame extends Document {
     correctAnswer: string;
   }[];
   questionsCount: number;
-  player1Answers: string[];
-  player2Answers: string[];
+  player1Answers: (string | null)[];
+  player2Answers: (string | null)[];
 }
 
 const GameSchema: Schema = new Schema({
@@ -38,8 +38,8 @@ const GameSchema: Schema = new Schema({
     correctAnswer: { type: String, required: true },
   }],
   questionsCount: { type: Number, required: true },
-  player1Answers: [{ type: String }],
-  player2Answers: [{ type: String }],
+  player1Answers: [{ type: String, default: null }],
+  player2Answers: [{ type: String, default: null }],
 });
 
 export default mongoose.model<IGame>('Game', GameSchema);

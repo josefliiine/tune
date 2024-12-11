@@ -26,6 +26,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const [localQuizQuestions, setLocalQuizQuestions] = useState<Question[]>(initialQuizQuestions);
   const [abortMessage, setAbortMessage] = useState<string | null>(null);
   const [waitingMessage, setWaitingMessage] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(15);
 
   useEffect(() => {
     const handleStartGame = (data: any) => {
@@ -34,6 +35,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       setLocalQuizQuestions(data.quizQuestions);
       setIsQuizComplete(false);
       setScore(0);
+      setTimeLeft(15);
     };
 
     const handleNextQuestion = (data: any) => {
@@ -42,6 +44,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         setIsCorrect(null);
         setSelectedAnswer(null);
         setWaitingMessage(null);
+        setTimeLeft(15);
       }, 2000);
     };
 
@@ -96,6 +99,19 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     };
   }, [gameId, userId]);
 
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      socket.emit("submitAnswer", { gameId, userId, answer: null });
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => prevTime - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, gameId, userId]);
+
   const handleAnswerSelect = (answer: string) => {
     if (isQuizComplete || selectedAnswer) {
       return;
@@ -132,6 +148,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     <div>
       <h2>Question {currentQuestionIndex + 1}</h2>
       <p>{currentQ.question}</p>
+      <p>Time left: {timeLeft} seconds</p>
       <div>
         {currentQ.answers.map((answer, index) => {
           const isSelected = answer === selectedAnswer;
@@ -140,28 +157,28 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
           return (
             <motion.button
-            key={index}
-            onClick={() => handleAnswerSelect(answer)}
-            disabled={isQuizComplete || !!selectedAnswer}
-            initial={{ scale: 1, borderColor: "gray" }}
-            animate={{
-              scale: isSelected ? 1.1 : 1,
-              borderColor: isCorrectAnswer
-                ? "green"
-                : isWrongAnswer
-                ? "red"
-                : "gray",
-            }}
-            transition={{ duration: 0.3 }}
-            style={{
-              border: "2px solid",
-              padding: "10px",
-              margin: "5px",
-              backgroundColor: isSelected ? (isCorrectAnswer ? "lightgreen" : "lightcoral") : "white",
-            }}
-          >
-            {answer}
-          </motion.button>
+              key={index}
+              onClick={() => handleAnswerSelect(answer)}
+              disabled={isQuizComplete || !!selectedAnswer}
+              initial={{ scale: 1, borderColor: "gray" }}
+              animate={{
+                scale: isSelected ? 1.1 : 1,
+                borderColor: isCorrectAnswer
+                  ? "green"
+                  : isWrongAnswer
+                  ? "red"
+                  : "gray",
+              }}
+              transition={{ duration: 0.3 }}
+              style={{
+                border: "2px solid",
+                padding: "10px",
+                margin: "5px",
+                backgroundColor: isSelected ? (isCorrectAnswer ? "lightgreen" : "lightcoral") : "white",
+              }}
+            >
+              {answer}
+            </motion.button>
           );
         })}
       </div>
