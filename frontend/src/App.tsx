@@ -10,6 +10,7 @@ import FriendsPage from "./pages/auth/FriendsPage.tsx";
 import DifficultyPage from "./pages/auth/DifficultyPage.tsx";
 import useAuth from "./hooks/useAuth.ts";
 import NotFoundPage from "./pages/NotFoundPage.tsx";
+import ProtectedRoutes from "./components/ProtectedRoutes.tsx";
 
 function App() {
 
@@ -21,13 +22,16 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ResetPasswordPage />} />
-        <Route path="/start-page" element={<StartPage />} />
-        <Route path="/user-page" element={<UserPage />} />
-        <Route path="/friends-page" element={<FriendsPage />} />
-        <Route
+        {/** Protected routes */}
+        <Route element={<ProtectedRoutes />}>
+          <Route path="/start-page" element={<StartPage />} />
+          <Route path="/user-page" element={<UserPage />} />
+          <Route path="/friends-page" element={<FriendsPage />} />
+          <Route
           path="/difficulty-page"
           element={<DifficultyPage userId={useAuth().userId!} />}
-        />
+          />
+        </Route>
       </Route>
     </Routes>
   )
