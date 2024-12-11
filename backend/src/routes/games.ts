@@ -53,69 +53,90 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
     console.log(`User ${userId} joined game ${gameId}`);
   });
 
-socket.on("submitAnswer", async ({ gameId, userId, answer }) => {
-  try {
-    const game = await Game.findOne({ gameId }) as IGame;
-    if (!game) {
-      socket.emit('error', { message: 'Game not found.' });
-      return;
-    }
-
-    const currentQuestion = game.questions[game.currentQuestionIndex];
-    if (!currentQuestion) {
-      socket.emit('error', { message: 'No current question.' });
-      return;
-    }
-
-    const isCorrect = answer === currentQuestion.correctAnswer;
-
-    let opponentId: string | null | undefined;
-    let opponentSocketId: string | undefined;
-
-    if (userId === game.player1) {
-      game.player1Answered = true;
-      game.player1Answers.push(answer);
-      opponentId = game.player2;
-    } else if (userId === game.player2) {
-      game.player2Answered = true;
-      game.player2Answers.push(answer);
-      opponentId = game.player1;
-    } else {
-      socket.emit('error', { message: 'User not part of this game.' });
-      return;
-    }
-
-    await game.save();
-
-    if (opponentId) {
-      opponentSocketId = [...io.sockets.sockets.entries()]
-        .find(([_, s]) => (s as any).userId === opponentId)?.[0];
-      if (!game.player1Answered || !game.player2Answered) {
-        socket.emit('waitingForOpponent', { message: 'Waiting for opponent to answer.' });
+  socket.on("submitAnswer", async ({ gameId, userId, answer }) => {
+    try {
+      const game = await Game.findOne({ gameId }) as IGame;
+      if (!game) {
+        socket.emit('error', { message: 'Game not found.' });
+        return;
       }
-    }
 
-    io.to(gameId).emit('playerAnswered', { userId, isCorrect });
+      const currentQuestion = game.questions[game.currentQuestionIndex];
+      if (!currentQuestion) {
+        socket.emit('error', { message: 'No current question.' });
+        return;
+      }
 
-    if (game.player1Answered && game.player2Answered) {
-      if (game.currentQuestionIndex < game.questionsCount - 1) {
-        game.currentQuestionIndex += 1;
-        game.player1Answered = false;
-        game.player2Answered = false;
-        await game.save();
-        const nextQuestion = game.questions[game.currentQuestionIndex];
-        io.to(gameId).emit('nextQuestion', { currentQuestionIndex: game.currentQuestionIndex, question: nextQuestion });
+      const isCorrect = String(answer).trim() === String(currentQuestion.correctAnswer).trim();
+
+      if (game.gameMode === "self") {
+        // Self-mode
+        game.player1Answers.push(answer);
+        game.player1Answered = true;
+
+        socket.emit("playerAnswered", { userId, isCorrect });
+
+        if (game.currentQuestionIndex < game.questionsCount - 1) {
+          game.currentQuestionIndex += 1;
+          game.player1Answered = false;
+          await game.save();
+          const nextQuestion = game.questions[game.currentQuestionIndex];
+          io.to(gameId).emit("nextQuestion", { currentQuestionIndex: game.currentQuestionIndex, question: nextQuestion });
+        } else {
+          game.status = "finished";
+          await game.save();
+          io.to(gameId).emit("gameFinished", { message: "Game finished." });
+        }
       } else {
-        game.status = 'finished';
+        // Random-mode
+        let opponentId: string | null | undefined = null;
+
+        if (userId === game.player1) {
+          game.player1Answered = true;
+          game.player1Answers.push(answer);
+          opponentId = game.player2;
+        } else if (userId === game.player2) {
+          game.player2Answered = true;
+          game.player2Answers.push(answer);
+          opponentId = game.player1;
+        } else {
+          socket.emit('error', { message: 'User not part of this game.' });
+          return;
+        }
+
         await game.save();
-        io.to(gameId).emit('gameFinished', { message: 'Game finished.' });
+
+        // Notify the current player that they are waiting for the opponent to answer
+        const playerSocketId = [...io.sockets.sockets.entries()]
+          .find(([_, s]) => (s as any).userId === userId)?.[0];
+
+        if (playerSocketId && (!game.player1Answered || !game.player2Answered)) {
+          io.to(playerSocketId).emit('waitingForOpponent', { message: 'Waiting for opponent to answer.' });
+        }
+
+        io.to(gameId).emit("playerAnswered", { userId, isCorrect });
+
+        // Check if both players have answered
+        if (game.player1Answered && game.player2Answered) {
+          if (game.currentQuestionIndex < game.questionsCount - 1) {
+            game.currentQuestionIndex += 1;
+            game.player1Answered = false;
+            game.player2Answered = false;
+            await game.save();
+            const nextQuestion = game.questions[game.currentQuestionIndex];
+            io.to(gameId).emit("nextQuestion", { currentQuestionIndex: game.currentQuestionIndex, question: nextQuestion });
+          } else {
+            game.status = "finished";
+            await game.save();
+            io.to(gameId).emit("gameFinished", { message: "Game finished." });
+          }
+        }
       }
+    } catch (error) {
+      console.error("Error recording answer:", error);
+      socket.emit("error", { message: "Error recording answer." });
     }
-  } catch (error) {
-    console.error('Error recording answer:', error);
-    socket.emit('error', { message: 'Error recording answer.' });
-  }
-});
+  });
 };
 
 export default router;

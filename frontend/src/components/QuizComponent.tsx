@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import socket from "../socket";
 import { Question } from "../types/Questions";
 
@@ -36,11 +37,12 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     };
 
     const handleNextQuestion = (data: any) => {
-      console.log("Next question received:", data);
-      setCurrentQuestionIndex(data.currentQuestionIndex);
-      setIsCorrect(null);
-      setSelectedAnswer(null);
-      setWaitingMessage(null);
+      setTimeout(() => {
+        setCurrentQuestionIndex(data.currentQuestionIndex);
+        setIsCorrect(null);
+        setSelectedAnswer(null);
+        setWaitingMessage(null);
+      }, 2000);
     };
 
     const handlePlayerAnswered = (data: any) => {
@@ -112,7 +114,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
           Your score: {score} / {localQuizQuestions.length}
         </p>
         {gameMode === "random" && <p>Opponent: {opponent}</p>}
-        {abortMessage && <p style={{ color: 'red' }}>{abortMessage}</p>}
+        {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
       </div>
     );
   }
@@ -131,25 +133,45 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       <h2>Question {currentQuestionIndex + 1}</h2>
       <p>{currentQ.question}</p>
       <div>
-        {currentQ.answers.map((answer, index) => (
-          <button
+        {currentQ.answers.map((answer, index) => {
+          const isSelected = answer === selectedAnswer;
+          const isCorrectAnswer = isSelected && isCorrect === true;
+          const isWrongAnswer = isSelected && isCorrect === false;
+
+          return (
+            <motion.button
             key={index}
             onClick={() => handleAnswerSelect(answer)}
             disabled={isQuizComplete || !!selectedAnswer}
+            initial={{ scale: 1, borderColor: "gray" }}
+            animate={{
+              scale: isSelected ? 1.1 : 1,
+              borderColor: isCorrectAnswer
+                ? "green"
+                : isWrongAnswer
+                ? "red"
+                : "gray",
+            }}
+            transition={{ duration: 0.3 }}
+            style={{
+              border: "2px solid",
+              padding: "10px",
+              margin: "5px",
+              backgroundColor: isSelected ? (isCorrectAnswer ? "lightgreen" : "lightcoral") : "white",
+            }}
           >
             {answer}
-          </button>
-        ))}
+          </motion.button>
+          );
+        })}
       </div>
       {selectedAnswer && (
         <p>
-          {isCorrect
-            ? "Correct!"
-            : `Wrong! The correct answer is: ${currentQ.correctAnswer}`}
+          {isCorrect ? "Correct!" : `Wrong! The correct answer is: ${currentQ.correctAnswer}`}
         </p>
       )}
       {waitingMessage && (
-        <p style={{ color: 'black', fontStyle: 'italic' }}>{waitingMessage}</p>
+        <p style={{ color: "black", fontStyle: "italic" }}>{waitingMessage}</p>
       )}
     </div>
   );
