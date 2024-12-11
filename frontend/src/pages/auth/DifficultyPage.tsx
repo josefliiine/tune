@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Header from "../../components/Header";
 import QuizComponent from "../../components/QuizComponent";
+import Modal from "../../components/Modal";
 import { Question } from "../../types/Questions";
 import socket from "../../socket";
 import api from "../../api/axiosConfig";
@@ -14,11 +15,29 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   const [gameId, setGameId] = useState<string | null>(null);
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [opponent, setOpponent] = useState<string | null>(null);
+  const [abortMessage, setAbortMessage] = useState<string | null>(null);
+  const [matchError, setMatchError] = useState<string | null>(null);
 
   const { status, opponent: matchedOpponent, loading, gameId: matchedGameId, quizQuestions: matchedQuizQuestions } = useMatchmaking(userId, selectedDifficulty, gameMode);
 
   useEffect(() => {
     socket.emit("authenticate", { userId });
+
+    socket.on("gameAborted", (data) => {
+      console.log("Game aborted:", data);
+      setAbortMessage(data.message);
+      setIsGameReady(false);
+    });
+
+    socket.on("error", (data) => {
+      console.error("Matchmaking error:", data.message);
+      setMatchError(data.message);
+    });
+
+    return () => {
+      socket.off("gameAborted");
+      socket.off("error");
+    };
   }, [userId]);
 
   useEffect(() => {
@@ -35,6 +54,7 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   };
 
   const handleGameModeChange = async (mode: 'self' | 'random') => {
+    console.log(`User selected game mode: ${mode}`);
     setGameMode(mode);
     if (!selectedDifficulty) return;
 
@@ -61,6 +81,11 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
         console.error("Error creating self game:", error);
       }
     }
+  };
+
+  const closeModal = () => {
+    setAbortMessage(null);
+    setMatchError(null);
   };
 
   if (isGameReady && gameId) {
@@ -117,6 +142,9 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
           </>
         )}
       </main>
+      {(abortMessage || matchError) && (
+        <Modal message={abortMessage || matchError || "An unknown error occurred."} onClose={closeModal} />
+      )}
     </div>
   );
 };

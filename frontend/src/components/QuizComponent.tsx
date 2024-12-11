@@ -23,29 +23,25 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const [isQuizComplete, setIsQuizComplete] = useState<boolean>(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [localQuizQuestions, setLocalQuizQuestions] = useState<Question[]>(initialQuizQuestions);
+  const [abortMessage, setAbortMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    socket.emit("joinGame", { gameId, userId });
-
-    // Listen to 'startGame' event
-    socket.on("startGame", (data) => {
+    const handleStartGame = (data: any) => {
       console.log("Game started:", data);
       setCurrentQuestionIndex(0);
       setLocalQuizQuestions(data.quizQuestions);
       setIsQuizComplete(false);
       setScore(0);
-    });
+    };
 
-    // Listen to 'nextQuestion' event
-    socket.on("nextQuestion", (data) => {
+    const handleNextQuestion = (data: any) => {
       console.log("Next question received:", data);
       setCurrentQuestionIndex(data.currentQuestionIndex);
       setIsCorrect(null);
       setSelectedAnswer(null);
-    });
+    };
 
-    // Listen to 'playerAnswered' event
-    socket.on("playerAnswered", (data) => {
+    const handlePlayerAnswered = (data: any) => {
       console.log(`Player ${data.userId} answered correctly: ${data.isCorrect}`);
       if (data.userId === userId) {
         setIsCorrect(data.isCorrect);
@@ -53,27 +49,40 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
           setScore((prevScore) => prevScore + 1);
         }
       }
-    });
+    };
 
-    // Listen to 'gameFinished' event
-    socket.on("gameFinished", (data) => {
+    const handleGameFinished = (data: any) => {
       console.log("Game finished:", data);
       setIsQuizComplete(true);
-    });
+    };
 
-    // Listen to errors
-    socket.on("error", (data) => {
+    const handleGameAborted = (data: any) => {
+      console.log("Game aborted:", data);
+      setAbortMessage(data.message);
+      setIsQuizComplete(true);
+    };
+
+    const handleError = (data: any) => {
       console.error("Error:", data.message);
-      // Eventuellt visa ett meddelande i UI
-    });
+      // Show message in UI!!!
+    };
+
+    socket.on("startGame", handleStartGame);
+    socket.on("nextQuestion", handleNextQuestion);
+    socket.on("playerAnswered", handlePlayerAnswered);
+    socket.on("gameFinished", handleGameFinished);
+    socket.on("gameAborted", handleGameAborted);
+    socket.on("error", handleError);
+
+    socket.emit("joinGame", { gameId, userId });
 
     return () => {
-      socket.off("joinGame");
-      socket.off("startGame");
-      socket.off("nextQuestion");
-      socket.off("playerAnswered");
-      socket.off("gameFinished");
-      socket.off("error");
+      socket.off("startGame", handleStartGame);
+      socket.off("nextQuestion", handleNextQuestion);
+      socket.off("playerAnswered", handlePlayerAnswered);
+      socket.off("gameFinished", handleGameFinished);
+      socket.off("gameAborted", handleGameAborted);
+      socket.off("error", handleError);
     };
   }, [gameId, userId]);
 
@@ -95,6 +104,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
           Your score: {score} / {localQuizQuestions.length}
         </p>
         {gameMode === "random" && <p>Opponent: {opponent}</p>}
+        {abortMessage && <p style={{ color: 'red' }}>{abortMessage}</p>}
       </div>
     );
   }
