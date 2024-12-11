@@ -8,7 +8,11 @@ interface MatchFoundData {
   opponent: string;
 }
 
-const useMatchmaking = (userId: string, difficulty: string | null) => {
+const useMatchmaking = (
+  userId: string,
+  difficulty: string | null,
+  gameMode: 'self' | 'random' | null
+) => {
   const [status, setStatus] = useState<'waiting' | 'matched' | null>(null);
   const [opponent, setOpponent] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -16,6 +20,7 @@ const useMatchmaking = (userId: string, difficulty: string | null) => {
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
 
   useEffect(() => {
+    if (gameMode !== 'random') return;
     if (!userId || !difficulty) return;
 
     setLoading(true);
@@ -56,7 +61,7 @@ const useMatchmaking = (userId: string, difficulty: string | null) => {
       socket.off("waitingForMatch", onWaitingForMatch);
       socket.off("error", onError);
     };
-  }, [userId, difficulty]);
+  }, [userId, difficulty, gameMode]);
 
   return { status, opponent, loading, gameId, quizQuestions };
 };

@@ -15,7 +15,7 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [opponent, setOpponent] = useState<string | null>(null);
 
-  const { status, opponent: matchedOpponent, loading, gameId: matchedGameId, quizQuestions: matchedQuizQuestions } = useMatchmaking(userId, selectedDifficulty);
+  const { status, opponent: matchedOpponent, loading, gameId: matchedGameId, quizQuestions: matchedQuizQuestions } = useMatchmaking(userId, selectedDifficulty, gameMode);
 
   useEffect(() => {
     socket.emit("authenticate", { userId });
@@ -95,10 +95,10 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
           <>
             <h1>Choose Game Mode</h1>
             <div className="game-mode-buttons">
-              <button onClick={() => handleGameModeChange("self")}>
+              <button onClick={() => handleGameModeChange("self")} disabled={loading}>
                 Play Against Yourself
               </button>
-              <button onClick={() => handleGameModeChange("random")}>
+              <button onClick={() => handleGameModeChange("random")} disabled={loading}>
                 Play Against Random User
               </button>
             </div>
@@ -110,6 +110,8 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
                 ) : (
                   <p>Waiting for a match...</p>
                 )}
+                {status === 'matched' && <p>Match found! Starting game...</p>}
+                {status === 'waiting' && <p>Waiting for another player...</p>}
               </div>
             )}
           </>
