@@ -24,6 +24,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [localQuizQuestions, setLocalQuizQuestions] = useState<Question[]>(initialQuizQuestions);
   const [abortMessage, setAbortMessage] = useState<string | null>(null);
+  const [waitingMessage, setWaitingMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const handleStartGame = (data: any) => {
@@ -39,6 +40,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       setCurrentQuestionIndex(data.currentQuestionIndex);
       setIsCorrect(null);
       setSelectedAnswer(null);
+      setWaitingMessage(null);
     };
 
     const handlePlayerAnswered = (data: any) => {
@@ -62,9 +64,13 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       setIsQuizComplete(true);
     };
 
+    const handleWaitingForOpponent = (data: { message: string }) => {
+      console.log(data.message);
+      setWaitingMessage(data.message);
+    };
+
     const handleError = (data: any) => {
       console.error("Error:", data.message);
-      // Show message in UI!!!
     };
 
     socket.on("startGame", handleStartGame);
@@ -72,6 +78,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     socket.on("playerAnswered", handlePlayerAnswered);
     socket.on("gameFinished", handleGameFinished);
     socket.on("gameAborted", handleGameAborted);
+    socket.on("waitingForOpponent", handleWaitingForOpponent);
     socket.on("error", handleError);
 
     socket.emit("joinGame", { gameId, userId });
@@ -82,6 +89,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       socket.off("playerAnswered", handlePlayerAnswered);
       socket.off("gameFinished", handleGameFinished);
       socket.off("gameAborted", handleGameAborted);
+      socket.off("waitingForOpponent", handleWaitingForOpponent);
       socket.off("error", handleError);
     };
   }, [gameId, userId]);
@@ -139,6 +147,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
             ? "Correct!"
             : `Wrong! The correct answer is: ${currentQ.correctAnswer}`}
         </p>
+      )}
+      {waitingMessage && (
+        <p style={{ color: 'black', fontStyle: 'italic' }}>{waitingMessage}</p>
       )}
     </div>
   );
