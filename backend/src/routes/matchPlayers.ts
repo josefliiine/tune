@@ -1,81 +1,127 @@
 import express from 'express';
 import WaitingList from '../models/WaitingList';
-import Game from '../models/Game';
+import Game, { IGame } from '../models/Game';
 import Question from '../models/Question';
-import { authenticate } from '../middleware/auth';
+import { Socket, Server } from 'socket.io';
 
 const router = express.Router();
 
-router.post('/join', authenticate, async (req, res) => {
-  const { userId, difficulty } = req.body;
+export const handleMatchmaking = (socket: Socket, io: Server, userIdToSocketId: Map<string, string>) => {
+  socket.on("joinMatchmaking", async ({ userId, difficulty }) => {
+    try {
+      console.log(`User ${userId} is trying to join matchmaking with difficulty ${difficulty}`);
 
-  if (!userId || !difficulty) {
-    return res.status(400).json({ message: 'userId and difficulty are required.' });
-  }
+      // Add user to waitinglist
+      const existingEntry = await WaitingList.findOne({ userId });
+      if (existingEntry) {
+        existingEntry.status = 'waiting';
+        existingEntry.difficulty = difficulty;
+        existingEntry.opponent = null;
+        await existingEntry.save();
+        console.log(`Updated existing waitlist entry for user ${userId}`);
+      } else {
+        await WaitingList.create({ userId, status: 'waiting', difficulty, opponent: null });
+        console.log(`Created new waitlist entry for user ${userId}`);
+      }
 
-  try {
-    // Add user to waitlist
-    const existingEntry = await WaitingList.findOne({ userId });
-    if (existingEntry) {
-      existingEntry.status = 'waiting';
-      existingEntry.difficulty = difficulty;
-      existingEntry.opponent = null;
-      await existingEntry.save();
-    } else {
-      await WaitingList.create({ userId, status: 'waiting', difficulty, opponent: null });
-    }
-
-    const matchedUser = await WaitingList.findOne({
-      status: 'waiting',
-      userId: { $ne: userId },
-      difficulty: difficulty,
-    });
-
-    if (matchedUser) {
-      await WaitingList.updateOne(
-        { userId: userId },
-        { status: 'matched', opponent: matchedUser.userId }
-      );
-      await WaitingList.updateOne(
-        { userId: matchedUser.userId },
-        { status: 'matched', opponent: userId }
-      );
-
-      const questions = await Question.aggregate([
-        { $match: { difficulty } },
-        { $sample: { size: 10 } }
-      ]);
-
-      const gameId = `random-${userId}-${Date.now()}`;
-      const newGame = new Game({
-        gameId,
-        player1: userId,
-        player2: matchedUser.userId,
-        status: 'started',
-        createdAt: new Date(),
-        player1Answered: false,
-        player2Answered: false,
-        currentQuestionIndex: 0,
-        questions: questions.map(q => ({
-          questionId: q._id,
-          question: q.question,
-          answers: q.answers,
-          correctAnswer: q.correctAnswer,
-        })),
-        questionsCount: 10,
+      // Find matching user
+      const matchedUser = await WaitingList.findOne({
+        status: 'waiting',
+        userId: { $ne: userId },
+        difficulty: difficulty,
       });
-      await newGame.save();
 
-      await WaitingList.deleteMany({ userId: { $in: [userId, matchedUser.userId] } });
+      if (matchedUser) {
+        console.log(`Found a match for user ${userId}: ${matchedUser.userId}`);
 
-      res.status(201).json({ gameId, quizQuestions: newGame.questions });
-    } else {
-      res.status(200).json({ message: 'Waiting for a match.', opponent: null });
+        // Update status for both players
+        await WaitingList.updateOne(
+          { userId: userId },
+          { status: 'matched', opponent: matchedUser.userId }
+        );
+        await WaitingList.updateOne(
+          { userId: matchedUser.userId },
+          { status: 'matched', opponent: userId }
+        );
+        console.log(`Updated waitlist status for user ${userId} and matched user ${matchedUser.userId}`);
+
+        // Fetch questions
+        const questions = await Question.aggregate([
+          { $match: { difficulty } },
+          { $sample: { size: 10 } }
+        ]);
+        console.log(`Fetched ${questions.length} questions for the game`);
+
+        // Create new game -random
+        const gameId = `random-${userId}-${Date.now()}`;
+        const newGame = new Game({
+          gameId,
+          player1: userId,
+          player2: matchedUser.userId,
+          gameMode: 'random',
+          status: 'started',
+          createdAt: new Date(),
+          player1Answered: false,
+          player2Answered: false,
+          currentQuestionIndex: 0,
+          questions: questions.map(q => ({
+            questionId: q._id,
+            question: q.question,
+            answers: q.answers,
+            correctAnswer: q.correctAnswer,
+          })),
+          questionsCount: 10,
+          player1Answers: [],
+          player2Answers: [],
+        });
+        await newGame.save();
+        console.log(`New game created with gameId: ${gameId}`);
+
+        // Remove from waitinglist
+        await WaitingList.deleteMany({ userId: { $in: [userId, matchedUser.userId] } });
+        console.log(`Removed users ${userId} and ${matchedUser.userId} from waiting list`);
+
+        const matchedSocketId = userIdToSocketId.get(matchedUser.userId);
+        const currentSocketId = userIdToSocketId.get(userId);
+        console.log(`Socket ID for matched user (${matchedUser.userId}): ${matchedSocketId}`);
+        console.log(`Socket ID for current user (${userId}): ${currentSocketId}`);
+
+        if (matchedSocketId) {
+          const matchedSocket = io.sockets.sockets.get(matchedSocketId);
+          if (matchedSocket) {
+            matchedSocket.join(gameId);
+            console.log(`Matched user ${matchedUser.userId} joined game ${gameId}`);
+          } else {
+            console.warn(`Socket for matched user ${matchedUser.userId} not found`);
+          }
+        } else {
+          console.warn(`No socket ID found for matched user ${matchedUser.userId}`);
+        }
+
+        if (currentSocketId) {
+          socket.join(gameId);
+          console.log(`Current user ${userId} joined game ${gameId}`);
+        } else {
+          console.warn(`No socket ID found for user ${userId}`);
+        }
+
+        io.in(gameId).emit('matchFound', {
+          gameId,
+          quizQuestions: newGame.questions,
+          opponent: matchedUser.userId,
+        });
+        console.log(`Emitted 'matchFound' to game room ${gameId}`);
+
+      } else {
+        console.log(`No match found for user ${userId}, emitting 'waitingForMatch'`);
+        socket.emit("waitingForMatch");
+      }
+
+    } catch (error) {
+      console.error('Error during matchmaking:', error);
+      socket.emit("error", { message: 'Internal server error during matchmaking.' });
     }
-  } catch (error) {
-    console.error('Error joining matchmaking:', error);
-    res.status(500).json({ message: 'Internal server error.' });
-  }
-});
+  });
+};
 
 export default router;

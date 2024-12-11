@@ -1,155 +1,90 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
+import socket from "../socket";
 import { Question } from "../types/Questions";
-import { getIdToken } from "../utils/getIdToken";
-import api from "../api/axiosConfig";
 
-const QuizComponent = ({
-  gameId,
-  userId,
-  opponent,
-  gameMode,
-  quizQuestions,
-}: {
+interface QuizComponentProps {
   gameId: string;
   userId: string;
   opponent: string | null;
   gameMode: "self" | "random" | null;
-  quizQuestions: Question[];
+  initialQuizQuestions: Question[];
+}
+
+const QuizComponent: React.FC<QuizComponentProps> = ({
+  gameId,
+  userId,
+  opponent,
+  gameMode,
+  initialQuizQuestions,
 }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [score, setScore] = useState<number>(0);
-  const [waitingForOpponent, setWaitingForOpponent] = useState<boolean>(false);
   const [isQuizComplete, setIsQuizComplete] = useState<boolean>(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [isPollingActive, setIsPollingActive] = useState<boolean>(true);
-
-  const prevQuestionIndexRef = useRef<number>(currentQuestionIndex);
-
-  const fetchGameStatus = async () => {
-    try {
-      if (!isPollingActive) return;
-
-      const response = await api.get(`/games/${gameId}`, {
-        headers: {
-          Authorization: `Bearer ${await getIdToken()}`,
-        },
-      });
-      const data = response.data;
-
-      console.log("Game data from backend:", data);
-
-      if (data && typeof data.currentQuestionIndex === "number") {
-        if (data.currentQuestionIndex !== currentQuestionIndex) {
-          setCurrentQuestionIndex(data.currentQuestionIndex);
-
-          if (data.currentQuestionIndex >= quizQuestions.length) {
-            setIsQuizComplete(true);
-          }
-        }
-      }
-
-      if (gameMode === "random" && data?.player1Answered && data?.player2Answered) {
-        if (userId === data.player1) {
-          await api.put(`/games/${gameId}/next-question`, {}, {
-            headers: {
-              Authorization: `Bearer ${await getIdToken()}`,
-            },
-          });
-          setWaitingForOpponent(false);
-          setSelectedAnswer(null);
-          setIsCorrect(null);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching game status:", error);
-    }
-  };
+  const [localQuizQuestions, setLocalQuizQuestions] = useState<Question[]>(initialQuizQuestions);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchGameStatus();
-    }, 5000);
+    socket.emit("joinGame", { gameId, userId });
 
-    return () => clearInterval(interval);
-  }, [gameId, isPollingActive]);
+    // Listen to 'startGame' event
+    socket.on("startGame", (data) => {
+      console.log("Game started:", data);
+      setCurrentQuestionIndex(0);
+      setLocalQuizQuestions(data.quizQuestions);
+      setIsQuizComplete(false);
+      setScore(0);
+    });
 
-  useEffect(() => {
-    if (currentQuestionIndex !== prevQuestionIndexRef.current) {
-      console.log(
-        "Question index changed from",
-        prevQuestionIndexRef.current,
-        "to",
-        currentQuestionIndex,
-        "Resetting selectedAnswer."
-      );
-      setSelectedAnswer(null);
+    // Listen to 'nextQuestion' event
+    socket.on("nextQuestion", (data) => {
+      console.log("Next question received:", data);
+      setCurrentQuestionIndex(data.currentQuestionIndex);
       setIsCorrect(null);
-      prevQuestionIndexRef.current = currentQuestionIndex;
-    }
-  }, [currentQuestionIndex]);
+      setSelectedAnswer(null);
+    });
 
-  const handleAnswerSelect = async (answer: string) => {
+    // Listen to 'playerAnswered' event
+    socket.on("playerAnswered", (data) => {
+      console.log(`Player ${data.userId} answered correctly: ${data.isCorrect}`);
+      if (data.userId === userId) {
+        setIsCorrect(data.isCorrect);
+        if (data.isCorrect) {
+          setScore((prevScore) => prevScore + 1);
+        }
+      }
+    });
+
+    // Listen to 'gameFinished' event
+    socket.on("gameFinished", (data) => {
+      console.log("Game finished:", data);
+      setIsQuizComplete(true);
+    });
+
+    // Listen to errors
+    socket.on("error", (data) => {
+      console.error("Error:", data.message);
+      // Eventuellt visa ett meddelande i UI
+    });
+
+    return () => {
+      socket.off("joinGame");
+      socket.off("startGame");
+      socket.off("nextQuestion");
+      socket.off("playerAnswered");
+      socket.off("gameFinished");
+      socket.off("error");
+    };
+  }, [gameId, userId]);
+
+  const handleAnswerSelect = (answer: string) => {
     if (isQuizComplete || selectedAnswer) {
       return;
     }
-  
+
     setSelectedAnswer(answer);
-    setIsPollingActive(false);
-  
-    const currentQ = quizQuestions[currentQuestionIndex];
-    const correct = currentQ.correctAnswer === answer;
-    setIsCorrect(correct);
-  
-    if (correct) {
-      setScore((prevScore) => prevScore + 1);
-    }
-  
-    try {
-      await api.post(
-        `/games/${gameId}/answer`,
-        {
-          userId,
-          answer,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${await getIdToken()}`,
-          },
-        }
-      );
-  
-      if (gameMode === "self") {
-        if (currentQuestionIndex + 1 < quizQuestions.length) {
-          await api.put(
-            `/games/${gameId}/next-question`,
-            {},
-            {
-              headers: {
-                'Authorization': `Bearer ${await getIdToken()}`,
-              },
-            }
-          );
-  
-          setTimeout(() => {
-            setCurrentQuestionIndex((prev) => prev + 1);
-            setSelectedAnswer(null);
-            setIsCorrect(null);
-            setIsPollingActive(true);
-          }, 2000);
-        } else {
-          setTimeout(() => {
-            setIsQuizComplete(true);
-          }, 2000);
-        }
-      } else if (gameMode === "random") {
-        setWaitingForOpponent(true);
-        setIsPollingActive(true);
-      }
-    } catch (error) {
-      console.error("Error submitting answer:", error);
-      setIsPollingActive(true);
-    }
+
+    socket.emit("submitAnswer", { gameId, userId, answer });
   };
 
   if (isQuizComplete) {
@@ -157,18 +92,18 @@ const QuizComponent = ({
       <div>
         <h2>Quiz Complete!</h2>
         <p>
-          Your score: {score} / {quizQuestions.length}
+          Your score: {score} / {localQuizQuestions.length}
         </p>
         {gameMode === "random" && <p>Opponent: {opponent}</p>}
       </div>
     );
   }
 
-  if (currentQuestionIndex < 0 || currentQuestionIndex >= quizQuestions.length) {
+  if (currentQuestionIndex < 0 || currentQuestionIndex >= localQuizQuestions.length) {
     return <div>Loading question...</div>;
   }
 
-  const currentQ = quizQuestions[currentQuestionIndex];
+  const currentQ = localQuizQuestions[currentQuestionIndex];
   if (!currentQ) {
     return <div>Loading question...</div>;
   }
@@ -182,7 +117,7 @@ const QuizComponent = ({
           <button
             key={index}
             onClick={() => handleAnswerSelect(answer)}
-            disabled={isQuizComplete || waitingForOpponent || !!selectedAnswer}
+            disabled={isQuizComplete || !!selectedAnswer}
           >
             {answer}
           </button>
@@ -195,7 +130,6 @@ const QuizComponent = ({
             : `Wrong! The correct answer is: ${currentQ.correctAnswer}`}
         </p>
       )}
-      {waitingForOpponent && <p>Waiting for opponent...</p>}
     </div>
   );
 };

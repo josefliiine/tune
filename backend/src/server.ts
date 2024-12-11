@@ -1,11 +1,12 @@
 import express from "express";
-import admin from "firebase-admin";
 import cors from 'cors';
 import morgan from 'morgan';
 import path from 'path';
-import router from "./routes";
+import router, { handleMatchmaking, handleGameEvents } from "./routes";
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import http from 'http';
+import { Server } from 'socket.io';
 
 dotenv.config();
 
@@ -37,6 +38,42 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"]
+  }
+});
+
+const userIdToSocketId = new Map<string, string>();
+
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  socket.on('authenticate', (data) => {
+    const { userId } = data;
+    if (userId) {
+      userIdToSocketId.set(userId, socket.id);
+      console.log(`User authenticated: ${userId} with socket ID: ${socket.id}`);
+    }
+  });
+
+  handleMatchmaking(socket, io, userIdToSocketId);
+  handleGameEvents(socket, io);
+
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.id}`);
+    for (const [userId, sockId] of userIdToSocketId.entries()) {
+      if (sockId === socket.id) {
+        userIdToSocketId.delete(userId);
+        console.log(`User ${userId} removed from mapping.`);
+        break;
+      }
+    }
+  });
+});
+
 mongoose.connect(DATABASE_URL)
   .then(async () => {
     console.log('Connected to MongoDB');
@@ -46,7 +83,7 @@ mongoose.connect(DATABASE_URL)
     console.log('Collections:');
     collections.forEach(col => console.log(col.collectionName));
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Backend is on http://localhost:${PORT}`);
     });
   })

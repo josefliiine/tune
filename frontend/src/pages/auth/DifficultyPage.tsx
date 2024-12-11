@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import Header from "../../components/Header";
 import QuizComponent from "../../components/QuizComponent";
 import { Question } from "../../types/Questions";
-import api from '../../api/axiosConfig';
+import socket from "../../socket";
+import api from "../../api/axiosConfig";
 import { getIdToken } from "../../utils/getIdToken";
-import axios from 'axios';
+import useMatchmaking from "../../hooks/useMatchMaking";
 
 const DifficultyPage = ({ userId }: { userId: string }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
@@ -13,98 +14,54 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   const [gameId, setGameId] = useState<string | null>(null);
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [opponent, setOpponent] = useState<string | null>(null);
-  const [matchmakingLoading, setMatchmakingLoading] = useState<boolean>(false);
-  
+
+  const { status, opponent: matchedOpponent, loading, gameId: matchedGameId, quizQuestions: matchedQuizQuestions } = useMatchmaking(userId, selectedDifficulty);
+
+  useEffect(() => {
+    socket.emit("authenticate", { userId });
+  }, [userId]);
+
+  useEffect(() => {
+    if (status === 'matched' && matchedGameId && matchedQuizQuestions) {
+      setGameId(matchedGameId);
+      setQuizQuestions(matchedQuizQuestions);
+      setOpponent(matchedOpponent);
+      setIsGameReady(true);
+    }
+  }, [status, matchedGameId, matchedQuizQuestions, matchedOpponent]);
+
   const handleDifficultySelect = (difficulty: string) => {
     setSelectedDifficulty(difficulty);
   };
 
-  const fetchQuestions = async (difficulty: string) => {
-    try {
-      const response = await api.get('/questions', {
-        params: { difficulty },
-        headers: {
-          'Authorization': `Bearer ${await getIdToken()}`
-        }
-      });
-      return response.data as Question[];
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Error fetching questions:', error.response?.data);
-      } else {
-        console.error('Error fetching questions:', error);
-      }
-      return [];
-    }
-  };
+  const handleGameModeChange = async (mode: 'self' | 'random') => {
+    setGameMode(mode);
+    if (!selectedDifficulty) return;
 
-  const createSelfGame = async () => {
-    try {
-      const response = await api.post('/games', {
-        gameMode: 'self',
-        userId,
-        difficulty: selectedDifficulty,
-      }, {
-        headers: {
-          'Authorization': `Bearer ${await getIdToken()}`
-        }
-      });
-      setGameId(response.data.gameId);
-      setQuizQuestions(response.data.quizQuestions);
-      setIsGameReady(true);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Error creating self game:', error.response?.data);
-      } else {
-        console.error('Error creating self game:', error);
-      }
-    }
-  };
-
-  const joinRandomGame = async () => {
-    setMatchmakingLoading(true);
-    try {
-      const response = await api.post('/match/join', {
-        userId,
-        difficulty: selectedDifficulty,
-      }, {
-        headers: {
-          'Authorization': `Bearer ${await getIdToken()}`
-        }
-      });
-      if (response.data.gameId) {
+    if (mode === "self") {
+      try {
+        const response = await api.post(
+          "/games",
+          {
+            gameMode: "self",
+            userId,
+            difficulty: selectedDifficulty,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${await getIdToken()}`,
+            },
+          }
+        );
+        console.log("Self game created:", response.data);
         setGameId(response.data.gameId);
         setQuizQuestions(response.data.quizQuestions);
         setIsGameReady(true);
-      } else {
-        setOpponent(response.data.opponent);
+      } catch (error) {
+        console.error("Error creating self game:", error);
       }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Error joining random game:', error.response?.data);
-      } else {
-        console.error('Error joining random game:', error);
-      }
-    } finally {
-      setMatchmakingLoading(false);
     }
   };
-
-  const handleGameModeChange = async (mode: 'self' | 'random') => {
-    setGameMode(mode);
-    const questions = await fetchQuestions(selectedDifficulty || "");
-    const totalQuestions = 10;
-    setQuizQuestions(questions.slice(0, totalQuestions));
-
-    if (mode === "self") {
-      await createSelfGame();
-    } else if (mode === "random") {
-      await joinRandomGame();
-    }
-  };
-
-  useEffect(() => {
-  }, [gameMode, isGameReady]);
 
   if (isGameReady && gameId) {
     return (
@@ -115,7 +72,7 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
           userId={userId}
           opponent={opponent}
           gameMode={gameMode}
-          quizQuestions={quizQuestions}
+          initialQuizQuestions={quizQuestions}
         />
       </div>
     );
@@ -138,16 +95,18 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
           <>
             <h1>Choose Game Mode</h1>
             <div className="game-mode-buttons">
-              <button onClick={() => handleGameModeChange("self")}>Play Against Yourself</button>
-              <button onClick={() => handleGameModeChange("random")}>Play Against Random User</button>
+              <button onClick={() => handleGameModeChange("self")}>
+                Play Against Yourself
+              </button>
+              <button onClick={() => handleGameModeChange("random")}>
+                Play Against Random User
+              </button>
             </div>
 
             {gameMode === "random" && (
               <div>
-                {matchmakingLoading ? (
+                {loading ? (
                   <p>Looking for a match...</p>
-                ) : opponent ? (
-                  <p>Matched with user: {opponent}</p>
                 ) : (
                   <p>Waiting for a match...</p>
                 )}

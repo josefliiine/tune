@@ -1,5 +1,5 @@
 import admin, { ServiceAccount } from "firebase-admin";
-import serviceAccount from './serviceAccountKey.json'; // Justera sökvägen om nödvändigt
+import serviceAccount from './serviceAccountKey.json';
 import dotenv from 'dotenv';
 
 dotenv.config();

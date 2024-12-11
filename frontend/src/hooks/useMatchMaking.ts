@@ -1,39 +1,64 @@
 import { useState, useEffect } from "react";
-import axios from 'axios';
-import { getIdToken } from "../utils/getIdToken";
+import socket from "../socket";
+import { Question } from "../types/Questions";
 
-const useMatchmaking = (userId: string) => {
+interface MatchFoundData {
+  gameId: string;
+  quizQuestions: Question[];
+  opponent: string;
+}
+
+const useMatchmaking = (userId: string, difficulty: string | null) => {
   const [status, setStatus] = useState<'waiting' | 'matched' | null>(null);
   const [opponent, setOpponent] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [gameId, setGameId] = useState<string | null>(null);
+  const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
 
   useEffect(() => {
-    const checkMatchStatus = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get(`/api/match/status`, {
-          headers: {
-            'Authorization': `Bearer ${await getIdToken()}`
-          },
-          params: { userId }
-        });
-        setStatus(response.data.status);
-        setOpponent(response.data.opponent || null);
-      } catch (error) {
-        console.error('Error checking match status:', error);
-      } finally {
-        setLoading(false);
-      }
+    if (!userId || !difficulty) return;
+
+    setLoading(true);
+    setStatus(null);
+    setOpponent(null);
+    setGameId(null);
+    setQuizQuestions([]);
+
+    socket.emit("joinMatchmaking", { userId, difficulty });
+
+    const onMatchFound = (data: MatchFoundData) => {
+      console.log("Match found:", data);
+      setStatus('matched');
+      setOpponent(data.opponent);
+      setGameId(data.gameId);
+      setQuizQuestions(data.quizQuestions);
+      setLoading(false);
     };
 
-    const interval = setInterval(() => {
-      checkMatchStatus();
-    }, 5000);
+    const onWaitingForMatch = () => {
+      console.log("Waiting for a match...");
+      setStatus('waiting');
+      setLoading(false);
+    };
 
-    return () => clearInterval(interval);
-  }, [userId]);
+    const onError = (data: any) => {
+      console.error("Matchmaking error:", data.message);
+      setLoading(false);
+      setStatus(null);
+    };
 
-  return { status, opponent, loading };
+    socket.on("matchFound", onMatchFound);
+    socket.on("waitingForMatch", onWaitingForMatch);
+    socket.on("error", onError);
+
+    return () => {
+      socket.off("matchFound", onMatchFound);
+      socket.off("waitingForMatch", onWaitingForMatch);
+      socket.off("error", onError);
+    };
+  }, [userId, difficulty]);
+
+  return { status, opponent, loading, gameId, quizQuestions };
 };
 
 export default useMatchmaking;
