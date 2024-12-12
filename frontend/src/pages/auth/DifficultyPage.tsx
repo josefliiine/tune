@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Header from "../../components/Header";
 import QuizComponent from "../../components/QuizComponent";
 import Modal from "../../components/Modal";
@@ -8,9 +9,18 @@ import api from "../../api/axiosConfig";
 import { getIdToken } from "../../utils/getIdToken";
 import useMatchmaking from "../../hooks/useMatchMaking";
 import PlayAgainstFriendModal from "../../components/PlayAgainstFriendModal";
-import IncomingChallenges from "../../components/IncomingChallenges";
+import useAuth from "../../hooks/useAuth.ts";
 
-const DifficultyPage = ({ userId }: { userId: string }) => {
+interface LocationState {
+  gameId: string;
+  quizQuestions: Question[];
+  opponentId: string;
+  gameMode: "self" | "random" | "friend";
+}
+
+const DifficultyPage: React.FC = () => {
+  const { userId } = useAuth();
+  const location = useLocation();
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
   const [gameMode, setGameMode] = useState<'self' | 'random' | 'friend' | null>(null);
   const [isGameReady, setIsGameReady] = useState(false);
@@ -19,11 +29,21 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   const [opponent, setOpponent] = useState<string | null>(null);
   const [abortMessage, setAbortMessage] = useState<string | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
-  
+
+  useEffect(() => {
+    const state = location.state as LocationState | undefined;
+    if (state && state.gameId) {
+      setGameId(state.gameId);
+      setQuizQuestions(state.quizQuestions);
+      setOpponent(state.opponentId);
+      setGameMode(state.gameMode);
+      setIsGameReady(true);
+    }
+  }, [location.state]);
+
   const { status, opponent: matchedOpponent, loading, gameId: matchedGameId, quizQuestions: matchedQuizQuestions } = useMatchmaking(userId, selectedDifficulty, gameMode);
-  
+
   const [isFriendModalOpen, setIsFriendModalOpen] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
 
   const openFriendModal = () => setIsFriendModalOpen(true);
   const closeFriendModal = () => setIsFriendModalOpen(false);
@@ -61,11 +81,10 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   };
 
   useEffect(() => {
-    if (userId && !authenticated) {
-      socket.emit("authenticate", { userId });
-      setAuthenticated(true);
-      console.log("Authenticate emitted");
-    }
+    if (!userId) return;
+
+    socket.emit("authenticate", { userId });
+    console.log("Authenticate emitted from DifficultyPage");
 
     socket.on("gameAborted", (data) => {
       console.log("Game aborted:", data);
@@ -78,11 +97,22 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
       setMatchError(data.message);
     });
 
+    socket.on("startGame", (data: any) => {
+      console.log("Start game received in DifficultyPage:", data);
+      const { gameId, quizQuestions, opponentId, gameMode } = data;
+      setGameId(gameId);
+      setQuizQuestions(quizQuestions);
+      setOpponent(opponentId);
+      setGameMode(gameMode);
+      setIsGameReady(true);
+    });
+
     return () => {
       socket.off("gameAborted");
       socket.off("error");
+      socket.off("startGame");
     };
-  }, [userId, authenticated]);
+  }, [userId]);
 
   useEffect(() => {
     if (status === 'matched' && matchedGameId && matchedQuizQuestions) {
@@ -92,22 +122,6 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
       setIsGameReady(true);
     }
   }, [status, matchedGameId, matchedQuizQuestions, matchedOpponent]);
-
-  useEffect(() => {
-    const handleStartGame = (data: any) => {
-      console.log("startGame event received:", data);
-      setGameId(data.gameId);
-      setQuizQuestions(data.quizQuestions);
-      setOpponent(data.opponent);
-      setIsGameReady(true);
-    };
-
-    socket.on("startGame", handleStartGame);
-
-    return () => {
-      socket.off("startGame", handleStartGame);
-    };
-  }, []);
 
   const handleDifficultySelect = (difficulty: string) => {
     setSelectedDifficulty(difficulty);
@@ -124,12 +138,11 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
         <Header />
         <QuizComponent
           gameId={gameId}
-          userId={userId}
+          userId={userId!}
           opponent={opponent}
           gameMode={gameMode as "self" | "random" | "friend"}
           initialQuizQuestions={quizQuestions}
         />
-        <IncomingChallenges />
       </div>
     );
   }
@@ -181,8 +194,7 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
           <p>{abortMessage || matchError || "An unknown error occurred."}</p>
         </Modal>
       )}
-      {isFriendModalOpen && <PlayAgainstFriendModal userId={userId} onClose={closeFriendModal} />}
-      <IncomingChallenges />
+      {isFriendModalOpen && <PlayAgainstFriendModal userId={userId!} onClose={closeFriendModal} />}
     </div>
   );
 };

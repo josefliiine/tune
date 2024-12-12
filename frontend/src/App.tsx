@@ -8,13 +8,15 @@ import StartPage from "./pages/auth/StartPage.tsx";
 import UserPage from "./pages/auth/UserPage.tsx";
 import FriendsPage from "./pages/auth/FriendsPage.tsx";
 import DifficultyPage from "./pages/auth/DifficultyPage.tsx";
-import useAuth from "./hooks/useAuth.ts";
 import NotFoundPage from "./pages/NotFoundPage.tsx";
 import ProtectedRoutes from "./components/ProtectedRoutes.tsx";
+import IncomingChallenges from "./components/IncomingChallenges.tsx";
 
 function App() {
 
   return (
+    <>
+    <IncomingChallenges />
     <Routes>
       <Route>
         <Route path="*" element={<NotFoundPage />} />
@@ -29,11 +31,12 @@ function App() {
           <Route path="/friends-page" element={<FriendsPage />} />
           <Route
           path="/difficulty-page"
-          element={<DifficultyPage userId={useAuth().userId!} />}
+          element={<DifficultyPage />}
           />
         </Route>
       </Route>
     </Routes>
+    </>
   )
 }
 
