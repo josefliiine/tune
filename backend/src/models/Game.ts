@@ -4,7 +4,7 @@ export interface IGame extends Document {
   gameId: string;
   player1: string;
   player2?: string | null;
-  gameMode: 'self' | 'random';
+  gameMode: 'self' | 'random' | 'friend';
   status: string;
   createdAt: Date;
   player1Answered: boolean;
@@ -25,7 +25,7 @@ const GameSchema: Schema = new Schema({
   gameId: { type: String, required: true, unique: true },
   player1: { type: String, required: true },
   player2: { type: String, default: null },
-  gameMode: { type: String, enum: ['self', 'random'], required: true },
+  gameMode: { type: String, enum: ['self', 'random', 'friend'], required: true },
   status: { type: String, required: true },
   createdAt: { type: Date, required: true },
   player1Answered: { type: Boolean, default: false },

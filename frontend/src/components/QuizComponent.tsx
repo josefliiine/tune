@@ -7,7 +7,7 @@ interface QuizComponentProps {
   gameId: string;
   userId: string;
   opponent: string | null;
-  gameMode: "self" | "random" | null;
+  gameMode: "self" | "random" | "friend";
   initialQuizQuestions: Question[];
 }
 
