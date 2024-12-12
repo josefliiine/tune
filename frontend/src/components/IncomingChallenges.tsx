@@ -22,7 +22,13 @@ const IncomingChallenges: React.FC = () => {
     const handleChallengeReceived = async (data: any) => {
       console.log("Challenge received:", data);
       const { challengeId, challengerId } = data;
-      setChallenges((prev) => [...prev, { challengeId, challengerId }]);
+
+      setChallenges((prev) => {
+        if (prev.find((c) => c.challengeId === challengeId)) {
+          return prev;
+        }
+        return [...prev, { challengeId, challengerId }];
+      });
 
       try {
         const response = await api.get(`/users/${challengerId}`);
@@ -47,6 +53,7 @@ const IncomingChallenges: React.FC = () => {
   }, []);
 
   const handleRespond = (challengeId: string, response: "accept" | "decline") => {
+    console.log(`Responding to challenge ${challengeId} with response ${response}`);
     socket.emit("respondToChallenge", { challengeId, response });
     setChallenges((prev) => prev.filter((c) => c.challengeId !== challengeId));
   };

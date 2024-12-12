@@ -39,6 +39,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     };
 
     const handleNextQuestion = (data: any) => {
+      console.log("Next question:", data);
       setTimeout(() => {
         setCurrentQuestionIndex(data.currentQuestionIndex);
         setIsCorrect(null);

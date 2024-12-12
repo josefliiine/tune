@@ -55,11 +55,29 @@ const userIdToSocketId = new Map<string, string>();
 io.on('connection', (socket: Socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  socket.on('authenticate', ({ userId }) => {
+  socket.on('authenticate', async ({ userId }) => {
     if (userId) {
+      if ((socket as any).isAuthenticated) {
+        console.log(`Socket ${socket.id} redan autentiserad som ${userId}`);
+        return;
+      }
       userIdToSocketId.set(userId, socket.id);
       console.log(`User authenticated: ${userId} with socket ID: ${socket.id}`);
       (socket as any).userId = userId;
+      (socket as any).isAuthenticated = true;
+  
+      try {
+        const pendingChallenges = await Challenge.find({ challengedId: userId, status: 'pending' });
+        pendingChallenges.forEach(challenge => {
+          socket.emit('challengeReceived', {
+            challengeId: challenge._id,
+            challengerId: challenge.challengerId,
+          });
+          console.log(`Emitted pending challenge to user ${userId}: ${challenge._id}`);
+        });
+      } catch (error) {
+        console.error('Error fetching pending challenges:', error);
+      }
     } else {
       console.warn(`No userId provided for socket ${socket.id}`);
     }
@@ -72,7 +90,6 @@ io.on('connection', (socket: Socket) => {
     try {
       console.log(`Received challengeFriend event: challengerId=${challengerId}, challengedId=${challengedId}`);
 
-      // Create new challenge in database
       const newChallenge = await Challenge.create({ challengerId, challengedId });
 
       const challengedSocketId = userIdToSocketId.get(challengedId);
@@ -85,7 +102,6 @@ io.on('connection', (socket: Socket) => {
         console.log(`Challenge sent from ${challengerId} to ${challengedId}`);
       } else {
         console.warn(`Challenged user ${challengedId} is not connected.`);
-        // Implement fallback!
       }
     } catch (error) {
       console.error('Error sending challenge:', error);
@@ -94,16 +110,25 @@ io.on('connection', (socket: Socket) => {
   });
 
   socket.on('respondToChallenge', async ({ challengeId, response }) => {
+    console.log(`Received respondToChallenge: challengeId=${challengeId}, response=${response}`);
     try {
       const challenge = await Challenge.findById(challengeId);
       if (!challenge) {
         socket.emit('error', { message: 'Challenge not found.' });
+        console.log(`Challenge with ID ${challengeId} not found.`);
         return;
       }
-  
+
+      if (challenge.status !== 'pending') {
+        socket.emit('error', { message: 'Challenge already responded to.' });
+        console.log(`Challenge ${challengeId} already responded to.`);
+        return;
+      }
+
       challenge.status = response === 'accept' ? 'accepted' : 'declined';
       await challenge.save();
-  
+      console.log(`Challenge ${challengeId} status updated to ${challenge.status}`);
+
       const challengerSocketId = userIdToSocketId.get(challenge.challengerId);
       if (challengerSocketId) {
         io.to(challengerSocketId).emit('challengeResponse', {
@@ -111,15 +136,16 @@ io.on('connection', (socket: Socket) => {
           response,
           challengedId: challenge.challengedId,
         });
+        console.log(`Emitted challengeResponse to challenger ${challenge.challengerId}`);
       }
-  
+
       if (response === 'accept') {
-        // Create a new game
         const questions = await Question.aggregate([
           { $match: { difficulty: 'Easy' } },
           { $sample: { size: 10 } }
         ]);
-  
+        console.log(`Fetched ${questions.length} questions for the game`);
+
         const gameId = `friend-${challenge.challengerId}-${challenge.challengedId}-${Date.now()}`;
         const newGame = new Game({
           gameId,
@@ -129,7 +155,7 @@ io.on('connection', (socket: Socket) => {
           status: 'started',
           createdAt: new Date(),
           questions: questions.map(q => ({
-            questionId: q._id,
+            questionId: q._id.toString(),
             question: q.question,
             answers: q.answers,
             correctAnswer: q.correctAnswer,
@@ -139,8 +165,8 @@ io.on('connection', (socket: Socket) => {
           player2Answers: [],
         });
         await newGame.save();
-  
-        // Add both players to game
+        console.log(`New game created with gameId: ${gameId}`);
+
         if (challengerSocketId) {
           const challengerSocket = io.sockets.sockets.get(challengerSocketId);
           if (challengerSocket) {
@@ -150,9 +176,10 @@ io.on('connection', (socket: Socket) => {
               quizQuestions: newGame.questions,
               opponent: challenge.challengedId,
             });
+            console.log(`Emitted startGame to challenger ${challenge.challengerId}`);
           }
         }
-  
+
         const challengedSocketId = userIdToSocketId.get(challenge.challengedId);
         if (challengedSocketId) {
           const challengedSocket = io.sockets.sockets.get(challengedSocketId);
@@ -163,6 +190,7 @@ io.on('connection', (socket: Socket) => {
               quizQuestions: newGame.questions,
               opponent: challenge.challengerId,
             });
+            console.log(`Emitted startGame to challenged user ${challenge.challengedId}`);
           }
         }
       }

@@ -8,7 +8,7 @@ import api from "../../api/axiosConfig";
 import { getIdToken } from "../../utils/getIdToken";
 import useMatchmaking from "../../hooks/useMatchMaking";
 import PlayAgainstFriendModal from "../../components/PlayAgainstFriendModal";
-import IncomingChallenges from "../../components/IncomingChallanges";
+import IncomingChallenges from "../../components/IncomingChallenges";
 
 const DifficultyPage = ({ userId }: { userId: string }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
@@ -19,10 +19,11 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   const [opponent, setOpponent] = useState<string | null>(null);
   const [abortMessage, setAbortMessage] = useState<string | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
-
+  
   const { status, opponent: matchedOpponent, loading, gameId: matchedGameId, quizQuestions: matchedQuizQuestions } = useMatchmaking(userId, selectedDifficulty, gameMode);
-
+  
   const [isFriendModalOpen, setIsFriendModalOpen] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
 
   const openFriendModal = () => setIsFriendModalOpen(true);
   const closeFriendModal = () => setIsFriendModalOpen(false);
@@ -60,7 +61,11 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   };
 
   useEffect(() => {
-    socket.emit("authenticate", { userId });
+    if (userId && !authenticated) {
+      socket.emit("authenticate", { userId });
+      setAuthenticated(true);
+      console.log("Authenticate emitted");
+    }
 
     socket.on("gameAborted", (data) => {
       console.log("Game aborted:", data);
@@ -77,7 +82,7 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
       socket.off("gameAborted");
       socket.off("error");
     };
-  }, [userId]);
+  }, [userId, authenticated]);
 
   useEffect(() => {
     if (status === 'matched' && matchedGameId && matchedQuizQuestions) {
@@ -87,6 +92,22 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
       setIsGameReady(true);
     }
   }, [status, matchedGameId, matchedQuizQuestions, matchedOpponent]);
+
+  useEffect(() => {
+    const handleStartGame = (data: any) => {
+      console.log("startGame event received:", data);
+      setGameId(data.gameId);
+      setQuizQuestions(data.quizQuestions);
+      setOpponent(data.opponent);
+      setIsGameReady(true);
+    };
+
+    socket.on("startGame", handleStartGame);
+
+    return () => {
+      socket.off("startGame", handleStartGame);
+    };
+  }, []);
 
   const handleDifficultySelect = (difficulty: string) => {
     setSelectedDifficulty(difficulty);
