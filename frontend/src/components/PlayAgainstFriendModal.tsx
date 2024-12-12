@@ -24,6 +24,8 @@ const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId,
     setSending(true);
     setSendError(null);
 
+    console.log(`Sending challenge from ${userId} to ${selectedFriendId}`); // Logga utmaningen
+
     try {
       socket.emit("challengeFriend", { challengerId: userId, challengedId: selectedFriendId });
       setSuccessMessage("Challenge sent successfully!");
@@ -50,7 +52,7 @@ const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId,
           >
             <option value="">--Choose a friend--</option>
             {friends.map((friend) => (
-              <option key={friend.id} value={friend.friendId}>
+              <option key={friend.friendId} value={friend.friendId}>
                 {friend.friendName} ({friend.friendEmail})
               </option>
             ))}

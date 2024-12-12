@@ -60,6 +60,8 @@ io.on('connection', (socket: Socket) => {
       userIdToSocketId.set(userId, socket.id);
       console.log(`User authenticated: ${userId} with socket ID: ${socket.id}`);
       (socket as any).userId = userId;
+    } else {
+      console.warn(`No userId provided for socket ${socket.id}`);
     }
   });
 
@@ -68,13 +70,14 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('challengeFriend', async ({ challengerId, challengedId }) => {
     try {
-      // Create a new challenge in databse
+      console.log(`Received challengeFriend event: challengerId=${challengerId}, challengedId=${challengedId}`);
+
+      // Create new challenge in database
       const newChallenge = await Challenge.create({ challengerId, challengedId });
-  
+
       const challengedSocketId = userIdToSocketId.get(challengedId);
-  
+
       if (challengedSocketId) {
-        // Send a notification
         io.to(challengedSocketId).emit('challengeReceived', {
           challengeId: newChallenge._id,
           challengerId,
@@ -82,7 +85,7 @@ io.on('connection', (socket: Socket) => {
         console.log(`Challenge sent from ${challengerId} to ${challengedId}`);
       } else {
         console.warn(`Challenged user ${challengedId} is not connected.`);
-        // HANDLE when user is not online!!
+        // Implement fallback!
       }
     } catch (error) {
       console.error('Error sending challenge:', error);

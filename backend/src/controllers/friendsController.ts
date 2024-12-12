@@ -2,9 +2,9 @@ import { Request, Response } from 'express';
 import admin from '../firebase';
 
 interface Friend {
-  id: string;
-  displayName?: string;
-  email?: string;
+  friendId: string;
+  friendName?: string;
+  friendEmail?: string;
 }
 
 export const getMyFriends = async (req: Request, res: Response) => {
@@ -23,9 +23,9 @@ export const getMyFriends = async (req: Request, res: Response) => {
       const userDoc = await db.collection('users').doc(friendId).get();
       if (userDoc.exists) {
         friends.push({
-          id: friendId,
-          displayName: userDoc.data()?.displayName,
-          email: userDoc.data()?.email,
+          friendId: friendId,
+          friendName: userDoc.data()?.displayName,
+          friendEmail: userDoc.data()?.email,
         });
       }
     }
