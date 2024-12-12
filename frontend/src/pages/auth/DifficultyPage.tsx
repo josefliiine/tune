@@ -20,8 +20,7 @@ const DifficultyPage = ({ userId }: { userId: string }) => {
   const [abortMessage, setAbortMessage] = useState<string | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
 
-  const { status, opponent: matchedOpponent, loading, gameId: matchedGameId, quizQuestions: matchedQuizQuestions } = 
-    gameMode === 'random' ? useMatchmaking(userId, selectedDifficulty, gameMode) : { status: null, opponent: null, loading: false, gameId: null, quizQuestions: [] };
+  const { status, opponent: matchedOpponent, loading, gameId: matchedGameId, quizQuestions: matchedQuizQuestions } = useMatchmaking(userId, selectedDifficulty, gameMode);
 
   const [isFriendModalOpen, setIsFriendModalOpen] = useState(false);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import socket from "../socket";
 import { Question } from "../types/Questions";
 
@@ -11,7 +11,7 @@ interface MatchFoundData {
 const useMatchmaking = (
   userId: string,
   difficulty: string | null,
-  gameMode: 'self' | 'random' | null
+  gameMode: 'self' | 'random' | 'friend' | null
 ) => {
   const [status, setStatus] = useState<'waiting' | 'matched' | null>(null);
   const [opponent, setOpponent] = useState<string | null>(null);

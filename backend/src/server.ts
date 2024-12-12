@@ -100,10 +100,10 @@ io.on('connection', (socket: Socket) => {
         socket.emit('error', { message: 'Challenge not found.' });
         return;
       }
-
+  
       challenge.status = response === 'accept' ? 'accepted' : 'declined';
       await challenge.save();
-
+  
       const challengerSocketId = userIdToSocketId.get(challenge.challengerId);
       if (challengerSocketId) {
         io.to(challengerSocketId).emit('challengeResponse', {
@@ -112,14 +112,14 @@ io.on('connection', (socket: Socket) => {
           challengedId: challenge.challengedId,
         });
       }
-
+  
       if (response === 'accept') {
         // Create a new game
         const questions = await Question.aggregate([
           { $match: { difficulty: 'Easy' } },
           { $sample: { size: 10 } }
         ]);
-
+  
         const gameId = `friend-${challenge.challengerId}-${challenge.challengedId}-${Date.now()}`;
         const newGame = new Game({
           gameId,
@@ -139,26 +139,26 @@ io.on('connection', (socket: Socket) => {
           player2Answers: [],
         });
         await newGame.save();
-
+  
         // Add both players to game
         if (challengerSocketId) {
           const challengerSocket = io.sockets.sockets.get(challengerSocketId);
           if (challengerSocket) {
             challengerSocket.join(gameId);
-            challengerSocket.emit('gameStarted', {
+            challengerSocket.emit('startGame', {
               gameId,
               quizQuestions: newGame.questions,
               opponent: challenge.challengedId,
             });
           }
         }
-
+  
         const challengedSocketId = userIdToSocketId.get(challenge.challengedId);
         if (challengedSocketId) {
           const challengedSocket = io.sockets.sockets.get(challengedSocketId);
           if (challengedSocket) {
             challengedSocket.join(gameId);
-            challengedSocket.emit('gameStarted', {
+            challengedSocket.emit('startGame', {
               gameId,
               quizQuestions: newGame.questions,
               opponent: challenge.challengerId,
