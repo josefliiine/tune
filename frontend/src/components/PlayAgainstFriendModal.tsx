@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import useMyFriends from "../hooks/useMyFriends";
 import Modal from "./Modal";
-import socket from "../socket";
+import useFriendChallenge from "../hooks/useFriendChallenge";
 
 interface PlayAgainstFriendModalProps {
   userId: string;
@@ -9,40 +9,45 @@ interface PlayAgainstFriendModalProps {
 }
 
 const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId, onClose }) => {
-  const { friends, loading, error } = useMyFriends(userId);
+  const { friends, loading, error: friendsError } = useMyFriends(userId);
   const [selectedFriendId, setSelectedFriendId] = useState<string>("");
-  const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleSendChallenge = async () => {
+  const { challengeStatus, sendChallenge, gameData, error: challengeError } = useFriendChallenge(userId);
+
+  useEffect(() => {
+    if (challengeStatus === 'accepted' && gameData) {
+      onClose();
+    } else if (challengeStatus === 'declined') {
+      setSendError("Your friend declined the challenge.");
+    }
+  }, [challengeStatus, gameData, onClose]);
+
+  useEffect(() => {
+    if (challengeError) {
+      setSendError(challengeError);
+    }
+  }, [challengeError]);
+
+  const handleSendChallenge = () => {
     if (!selectedFriendId) {
       setSendError("Please select a friend to challenge.");
       return;
     }
 
-    setSending(true);
     setSendError(null);
-
-    console.log(`Sending challenge from ${userId} to ${selectedFriendId}`); // Logga utmaningen
-
-    try {
-      socket.emit("challengeFriend", { challengerId: userId, challengedId: selectedFriendId });
-      setSuccessMessage("Challenge sent successfully!");
-    } catch (err) {
-      console.error("Error sending challenge:", err);
-      setSendError("Failed to send challenge.");
-    } finally {
-      setSending(false);
-    }
+    setSuccessMessage(null);
+    sendChallenge(selectedFriendId);
+    setSuccessMessage("Challenge sent successfully!");
   };
 
   return (
     <Modal onClose={onClose}>
       <h2>Play Against a Friend</h2>
       {loading && <p>Loading friends...</p>}
-      {error && <p>Error: {error}</p>}
-      {!loading && !error && (
+      {friendsError && <p>Error: {friendsError}</p>}
+      {!loading && !friendsError && (
         <div>
           <label htmlFor="friend-select">Select a friend:</label>
           <select
@@ -57,13 +62,14 @@ const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId,
               </option>
             ))}
           </select>
-          <button onClick={handleSendChallenge} disabled={sending || !selectedFriendId}>
-            {sending ? "Sending..." : "Send Challenge"}
+          <button onClick={handleSendChallenge} disabled={!selectedFriendId || challengeStatus === 'pending'}>
+            {challengeStatus === 'pending' ? "Sending..." : "Send Challenge"}
           </button>
           {sendError && <p style={{ color: "red" }}>{sendError}</p>}
           {successMessage && <p style={{ color: "green" }}>{successMessage}</p>}
         </div>
       )}
+      <button onClick={onClose} style={{ marginTop: "10px" }}>Close</button>
     </Modal>
   );
 };

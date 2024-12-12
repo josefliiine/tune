@@ -75,6 +75,7 @@ const DifficultyPage: React.FC = () => {
       } catch (error) {
         console.error("Error creating self game:", error);
       }
+    } else if (mode === "random") {
     } else if (mode === "friend") {
       openFriendModal();
     }
@@ -86,18 +87,18 @@ const DifficultyPage: React.FC = () => {
     socket.emit("authenticate", { userId });
     console.log("Authenticate emitted from DifficultyPage");
 
-    socket.on("gameAborted", (data) => {
+    const handleGameAborted = (data: any) => {
       console.log("Game aborted:", data);
       setAbortMessage(data.message);
       setIsGameReady(false);
-    });
+    };
 
-    socket.on("error", (data) => {
+    const handleError = (data: any) => {
       console.error("Matchmaking error:", data.message);
       setMatchError(data.message);
-    });
+    };
 
-    socket.on("startGame", (data: any) => {
+    const handleStartGame = (data: any) => {
       console.log("Start game received in DifficultyPage:", data);
       const { gameId, quizQuestions, opponentId, gameMode } = data;
       setGameId(gameId);
@@ -105,12 +106,16 @@ const DifficultyPage: React.FC = () => {
       setOpponent(opponentId);
       setGameMode(gameMode);
       setIsGameReady(true);
-    });
+    };
+
+    socket.on("gameAborted", handleGameAborted);
+    socket.on("error", handleError);
+    socket.on("startGame", handleStartGame);
 
     return () => {
-      socket.off("gameAborted");
-      socket.off("error");
-      socket.off("startGame");
+      socket.off("gameAborted", handleGameAborted);
+      socket.off("error", handleError);
+      socket.off("startGame", handleStartGame);
     };
   }, [userId]);
 
