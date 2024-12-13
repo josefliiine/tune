@@ -5,6 +5,7 @@ export interface IChallenge extends Document {
   challengedId: string;
   status: 'pending' | 'accepted' | 'declined';
   createdAt: Date;
+  difficulty: string;
 }
 
 const ChallengeSchema: Schema = new Schema({
@@ -12,6 +13,7 @@ const ChallengeSchema: Schema = new Schema({
   challengedId: { type: String, required: true },
   status: { type: String, enum: ['pending', 'accepted', 'declined'], default: 'pending' },
   createdAt: { type: Date, default: Date.now },
+  difficulty: { type: String, required: true },
 });
 
 export default mongoose.model<IChallenge>('Challenge', ChallengeSchema);

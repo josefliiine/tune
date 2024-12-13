@@ -72,6 +72,7 @@ io.on('connection', (socket: Socket) => {
           socket.emit('challengeReceived', {
             challengeId: challenge._id,
             challengerId: challenge.challengerId,
+            difficulty: challenge.difficulty,
           });
           console.log(`Emitted pending challenge to user ${userId}: ${challenge._id}`);
         });
@@ -86,11 +87,11 @@ io.on('connection', (socket: Socket) => {
   handleMatchmaking(socket, io, userIdToSocketId);
   handleGameEvents(socket, io);
 
-  socket.on('challengeFriend', async ({ challengerId, challengedId }) => {
+  socket.on('challengeFriend', async ({ challengerId, challengedId, difficulty }) => {
     try {
-      console.log(`Received challengeFriend event: challengerId=${challengerId}, challengedId=${challengedId}`);
+      console.log(`Received challengeFriend event: challengerId=${challengerId}, challengedId=${challengedId}, difficulty=${difficulty}`);
 
-      const newChallenge = await Challenge.create({ challengerId, challengedId });
+      const newChallenge = await Challenge.create({ challengerId, challengedId, difficulty });
 
       const challengedSocketId = userIdToSocketId.get(challengedId);
 
@@ -98,8 +99,9 @@ io.on('connection', (socket: Socket) => {
         io.to(challengedSocketId).emit('challengeReceived', {
           challengeId: newChallenge._id,
           challengerId,
+          difficulty,
         });
-        console.log(`Challenge sent from ${challengerId} to ${challengedId}`);
+        console.log(`Challenge sent from ${challengerId} to ${challengedId} with difficulty ${difficulty}`);
       } else {
         console.warn(`Challenged user ${challengedId} is not connected.`);
       }
@@ -141,10 +143,10 @@ io.on('connection', (socket: Socket) => {
 
       if (response === 'accept') {
         const questions = await Question.aggregate([
-          { $match: { difficulty: 'Easy' } },
+          { $match: { difficulty: challenge.difficulty } },
           { $sample: { size: 10 } }
         ]);
-        console.log(`Fetched ${questions.length} questions for the game`);
+        console.log(`Fetched ${questions.length} questions for the game with difficulty ${challenge.difficulty}`);
 
         const gameId = `friend-${challenge.challengerId}-${challenge.challengedId}-${Date.now()}`;
         const newGame = new Game({

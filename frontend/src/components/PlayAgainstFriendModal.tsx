@@ -6,9 +6,12 @@ import useFriendChallenge from "../hooks/useFriendChallenge";
 interface PlayAgainstFriendModalProps {
   userId: string;
   onClose: () => void;
+  difficulty: string;
 }
 
-const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId, onClose }) => {
+const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId, onClose, difficulty }) => {
+  console.log("PlayAgainstFriendModal received difficulty:", difficulty);
+
   const { friends, loading, error: friendsError } = useMyFriends(userId);
   const [selectedFriendId, setSelectedFriendId] = useState<string>("");
   const [sendError, setSendError] = useState<string | null>(null);
@@ -31,6 +34,7 @@ const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId,
   }, [challengeError]);
 
   const handleSendChallenge = () => {
+    console.log("Sending challenge with difficulty:", difficulty);
     if (!selectedFriendId) {
       setSendError("Please select a friend to challenge.");
       return;
@@ -38,7 +42,7 @@ const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId,
 
     setSendError(null);
     setSuccessMessage(null);
-    sendChallenge(selectedFriendId);
+    sendChallenge(selectedFriendId, difficulty);
     setSuccessMessage("Challenge sent successfully!");
   };
 
@@ -62,6 +66,7 @@ const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId,
               </option>
             ))}
           </select>
+
           <button onClick={handleSendChallenge} disabled={!selectedFriendId || challengeStatus === 'pending'}>
             {challengeStatus === 'pending' ? "Sending..." : "Send Challenge"}
           </button>

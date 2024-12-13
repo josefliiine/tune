@@ -76,6 +76,11 @@ const DifficultyPage: React.FC = () => {
         console.error("Error creating self game:", error);
       }
     } else if (mode === "random") {
+      try {
+        // Fix thisss
+      } catch (error) {
+        console.error("Error in random matchmaking:", error);
+      }
     } else if (mode === "friend") {
       openFriendModal();
     }
@@ -199,7 +204,13 @@ const DifficultyPage: React.FC = () => {
           <p>{abortMessage || matchError || "An unknown error occurred."}</p>
         </Modal>
       )}
-      {isFriendModalOpen && <PlayAgainstFriendModal userId={userId!} onClose={closeFriendModal} />}
+      {isFriendModalOpen && selectedDifficulty && (
+        <PlayAgainstFriendModal
+          userId={userId!}
+          onClose={closeFriendModal}
+          difficulty={selectedDifficulty}
+        />
+      )}
     </div>
   );
 };

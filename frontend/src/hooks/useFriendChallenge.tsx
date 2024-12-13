@@ -16,7 +16,7 @@ interface GameData {
 
 interface UseFriendChallengeReturn {
   challengeStatus: 'pending' | 'accepted' | 'declined' | null;
-  sendChallenge: (challengedId: string) => void;
+  sendChallenge: (challengedId: string, difficulty: string) => void;
   gameData: GameData | null;
   error: string | null;
 }
@@ -59,13 +59,14 @@ const useFriendChallenge = (challengerId: string): UseFriendChallengeReturn => {
     };
   }, []);
 
-  const sendChallenge = useCallback((challengedId: string) => {
-    if (challengedId) {
-      socket.emit("challengeFriend", { challengerId, challengedId });
+  const sendChallenge = useCallback((challengedId: string, difficulty: string) => {
+    if (challengedId && difficulty) {
+      console.log("Sending challenge with:", { challengerId, challengedId, difficulty });
+      socket.emit("challengeFriend", { challengerId, challengedId, difficulty });
       setChallengeStatus('pending');
     } else {
-      console.error("challengedId is not set.");
-      setError("Friend ID is required to send a challenge.");
+      console.error("challengedId and difficulty must be set.");
+      setError("Friend ID and difficulty are required to send a challenge.");
     }
   }, [challengerId]);
 
