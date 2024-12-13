@@ -26,9 +26,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const [localQuizQuestions, setLocalQuizQuestions] = useState<Question[]>(initialQuizQuestions);
   const [abortMessage, setAbortMessage] = useState<string | null>(null);
   const [waitingMessage, setWaitingMessage] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(15);
-  const [endTime, setEndTime] = useState<number | null>(null);
-
+  
   const [finalResults, setFinalResults] = useState<{
     player1?: { id: string; name: string; score: number };
     player2?: { id: string; name: string; score: number };
@@ -37,16 +35,13 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
   useEffect(() => {
     const handleStartGame = (data: any) => {
-      console.log("Game started:", data);
       setCurrentQuestionIndex(0);
       setLocalQuizQuestions(data.quizQuestions);
       setIsQuizComplete(false);
       setScore(0);
-      setEndTime(Date.now() + 15000);
     };
 
     const handleNextQuestion = (data: any) => {
-      console.log("Next question:", data);
       setCurrentQuestionIndex(data.currentQuestionIndex);
       setLocalQuizQuestions((prevQuestions) => {
         const newQuestions = [...prevQuestions];
@@ -56,11 +51,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       setIsCorrect(null);
       setSelectedAnswer(null);
       setWaitingMessage(null);
-      setEndTime(data.endTime);
     };
 
     const handlePlayerAnswered = (data: any) => {
-      console.log(`Player ${data.userId} answered correctly: ${data.isCorrect}`);
       if (data.userId === userId) {
         setIsCorrect(data.isCorrect);
         if (data.isCorrect) {
@@ -69,19 +62,16 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       }
     };
 
-    const handleGameFinished = (data: any) => {
-      console.log("Game finished:", data);
+    const handleGameFinished = () => {
       setIsQuizComplete(true);
     };
 
     const handleGameAborted = (data: any) => {
-      console.log("Game aborted:", data);
       setAbortMessage(data.message);
       setIsQuizComplete(true);
     };
 
     const handleWaitingForOpponent = (data: { message: string }) => {
-      console.log(data.message);
       setWaitingMessage(data.message);
     };
 
@@ -90,7 +80,6 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     };
 
     const handleGameResults = (data: any) => {
-      console.log("Game Results:", data);
       setFinalResults(data);
     };
 
@@ -116,33 +105,6 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       socket.off("gameResults", handleGameResults);
     };
   }, [gameId, userId]);
-
-  useEffect(() => {
-    if (isQuizComplete) {
-      setEndTime(null);
-      return;
-    }
-    if (!endTime) return;
-
-    const updateTimer = () => {
-      const now = Date.now();
-      const remaining = Math.floor((endTime - now) / 1000);
-      if (remaining >= 0) {
-        setTimeLeft(remaining);
-      } else {
-        setTimeLeft(0);
-        if (!isQuizComplete) {
-          socket.emit("submitAnswer", { gameId, userId, answer: null });
-        }
-      }
-    };
-
-    updateTimer();
-
-    const timerInterval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(timerInterval);
-  }, [endTime, gameId, userId, isQuizComplete]);
 
   const handleAnswerSelect = (answer: string) => {
     if (isQuizComplete || selectedAnswer) {
@@ -206,7 +168,6 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     <div>
       <h2>Question {currentQuestionIndex + 1}</h2>
       <p>{currentQ.question}</p>
-      <p>Time left: {timeLeft} seconds</p>
       <div>
         {currentQ.answers.map((answer, index) => {
           const isSelected = answer === selectedAnswer;

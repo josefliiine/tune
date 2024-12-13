@@ -7,72 +7,7 @@ import admin from '../firebase';
 
 const router = express.Router();
 
-const QUESTION_DURATION = 15000;
-
 export const handleGameEvents = (socket: Socket, io: Server) => {
-  const timers: { [gameId: string]: NodeJS.Timeout } = {};
-
-  const startTimer = async (gameId: string) => {
-    const game = await Game.findOne({ gameId }) as IGame;
-    if (!game) return;
-  
-    if (game.status === "finished") return;
-  
-    if (timers[gameId]) clearTimeout(timers[gameId]);
-  
-    const endTime = Date.now() + QUESTION_DURATION;
-  
-    timers[gameId] = setTimeout(async () => {
-      console.log(`Timer expired for game ${gameId}`);
-      
-      const updatedGame = await Game.findOne({ gameId }) as IGame;
-      if (updatedGame.status === "finished") return;
-  
-      const currentQuestion = updatedGame.questions[updatedGame.currentQuestionIndex];
-      
-      if (!updatedGame.player1Answered) {
-        updatedGame.player1Answers.push(null);
-      }
-      if ((updatedGame.gameMode === "random" || updatedGame.gameMode === "friend") && !updatedGame.player2Answered) {
-        updatedGame.player2Answers.push(null);
-      }
-  
-      updatedGame.player1Answered = false;
-      updatedGame.player2Answered = false;
-  
-      if (updatedGame.currentQuestionIndex < updatedGame.questionsCount - 1) {
-        updatedGame.currentQuestionIndex += 1;
-        await updatedGame.save();
-  
-        const nextQuestion = updatedGame.questions[updatedGame.currentQuestionIndex];
-        const newEndTime = Date.now() + QUESTION_DURATION;
-  
-        io.to(gameId).emit("nextQuestion", { 
-          currentQuestionIndex: updatedGame.currentQuestionIndex, 
-          question: nextQuestion,
-          endTime: newEndTime
-        });
-  
-        startTimer(gameId);
-      } else {
-        updatedGame.status = "finished";
-        await updatedGame.save();
-        io.to(gameId).emit("gameFinished", { message: "Game finished." });
-
-        await sendGameResults(updatedGame, io, gameId);
-
-        clearTimeout(timers[gameId]);
-        delete timers[gameId];
-      }
-    }, QUESTION_DURATION);
-  
-    const currentQuestion = game.questions[game.currentQuestionIndex];
-    io.to(gameId).emit("nextQuestion", { 
-      currentQuestionIndex: game.currentQuestionIndex, 
-      question: currentQuestion,
-      endTime
-    });
-  };
 
   async function sendGameResults(game: IGame, io: Server, gameId: string) {
     if (game.gameMode === 'self') {
@@ -143,8 +78,12 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
       return;
     }
 
-    if (game.status === "started" && game.currentQuestionIndex === 0 && !timers[gameId]) {
-      startTimer(gameId);
+    if (game.status === "started" && game.currentQuestionIndex === 0) {
+      const currentQuestion = game.questions[game.currentQuestionIndex];
+      io.to(gameId).emit("nextQuestion", { 
+        currentQuestionIndex: game.currentQuestionIndex, 
+        question: currentQuestion
+      });
     }
   });
 
@@ -175,13 +114,13 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
           game.player1Answered = false;
           await game.save();
           const nextQuestion = game.questions[game.currentQuestionIndex];
-          const newEndTime = Date.now() + QUESTION_DURATION;
-          io.to(gameId).emit("nextQuestion", { 
-            currentQuestionIndex: game.currentQuestionIndex, 
-            question: nextQuestion,
-            endTime: newEndTime
-          });
-          startTimer(gameId);
+          
+          setTimeout(() => {
+            io.to(gameId).emit("nextQuestion", { 
+              currentQuestionIndex: game.currentQuestionIndex, 
+              question: nextQuestion
+            });
+          }, 3000);
         } else {
           game.status = "finished";
           await game.save();
@@ -208,23 +147,17 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
             game.player2Answered = false;
             await game.save();
             const nextQuestion = game.questions[game.currentQuestionIndex];
-            const newEndTime = Date.now() + QUESTION_DURATION;
-            io.to(gameId).emit("nextQuestion", { 
-              currentQuestionIndex: game.currentQuestionIndex, 
-              question: nextQuestion,
-              endTime: newEndTime
-            });
-            startTimer(gameId);
+            setTimeout(() => {
+              io.to(gameId).emit("nextQuestion", { 
+                currentQuestionIndex: game.currentQuestionIndex, 
+                question: nextQuestion
+              });
+            }, 3000);
           } else {
             game.status = "finished";
             await game.save();
             io.to(gameId).emit("gameFinished", { message: "Game finished." });
             await sendGameResults(game, io, gameId);
-
-            if (timers[gameId]) {
-              clearTimeout(timers[gameId]);
-              delete timers[gameId];
-            }
           }
         }
       }
@@ -236,11 +169,7 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
 
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
-    for (const [gameId, timer] of Object.entries(timers)) {
-      clearTimeout(timer);
-      delete timers[gameId];
-      io.to(gameId).emit("gameAborted", { message: "A player has disconnected. Game aborted." });
-    }
+    io.emit("gameAborted", { message: "A player has disconnected. Game aborted." });
   });
 };
 
