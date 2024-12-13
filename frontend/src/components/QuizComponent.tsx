@@ -29,6 +29,12 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const [timeLeft, setTimeLeft] = useState<number>(15);
   const [endTime, setEndTime] = useState<number | null>(null);
 
+  const [finalResults, setFinalResults] = useState<{
+    player1?: { id: string; name: string; score: number };
+    player2?: { id: string; name: string; score: number };
+    winner?: string;
+  } | null>(null);
+
   useEffect(() => {
     const handleStartGame = (data: any) => {
       console.log("Game started:", data);
@@ -83,6 +89,11 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       console.error("Error:", data.message);
     };
 
+    const handleGameResults = (data: any) => {
+      console.log("Game Results:", data);
+      setFinalResults(data);
+    };
+
     socket.on("startGame", handleStartGame);
     socket.on("nextQuestion", handleNextQuestion);
     socket.on("playerAnswered", handlePlayerAnswered);
@@ -90,6 +101,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     socket.on("gameAborted", handleGameAborted);
     socket.on("waitingForOpponent", handleWaitingForOpponent);
     socket.on("error", handleError);
+    socket.on("gameResults", handleGameResults);
 
     socket.emit("joinGame", { gameId, userId });
 
@@ -101,6 +113,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       socket.off("gameAborted", handleGameAborted);
       socket.off("waitingForOpponent", handleWaitingForOpponent);
       socket.off("error", handleError);
+      socket.off("gameResults", handleGameResults);
     };
   }, [gameId, userId]);
 
@@ -142,13 +155,39 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   };
 
   if (isQuizComplete) {
+    if (finalResults) {
+      const { player1, player2, winner } = finalResults;
+      const myResult = (player1 && player1.id === userId) ? player1 : player2;
+      const opponentResult = (player1 && player1.id !== userId) ? player1 : player2;
+
+      return (
+        <div>
+          <h2>Quiz Complete!</h2>
+          {myResult && (
+            <p>Your score: {myResult.score}</p>
+          )}
+          {opponentResult && (
+            <p>
+              Opponent: {opponentResult.name} - Score: {opponentResult.score}
+            </p>
+          )}
+          {winner && winner !== 'draw' ? (
+            <p>Winner: {winner}</p>
+          ) : (
+            <p>It's a draw!</p>
+          )}
+          {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
+        </div>
+      );
+    }
+
     return (
       <div>
         <h2>Quiz Complete!</h2>
         <p>
           Your score: {score} / {localQuizQuestions.length}
         </p>
-        {gameMode === "random" && <p>Opponent: {opponent}</p>}
+        {gameMode !== "self" && opponent && <p>Opponent: {opponent}</p>}
         {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
       </div>
     );

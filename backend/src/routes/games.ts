@@ -3,51 +3,11 @@ import Game, { IGame } from '../models/Game';
 import { authenticate } from '../middleware/auth';
 import Question from '../models/Question';
 import { Socket, Server } from 'socket.io';
+import admin from '../firebase';
 
 const router = express.Router();
 
 const QUESTION_DURATION = 15000;
-
-router.post('/', authenticate, async (req, res) => {
-  const { gameMode, userId, difficulty } = req.body;
-
-  if (gameMode === 'self') {
-    try {
-      const questions = await Question.aggregate([
-        { $match: { difficulty } },
-        { $sample: { size: 10 } }
-      ]);
-
-      const gameId = `self-${userId}-${Date.now()}`;
-      const newGame = new Game({
-        gameId,
-        player1: userId,
-        gameMode: 'self',
-        status: "started",
-        createdAt: new Date(),
-        player1Answered: false,
-        currentQuestionIndex: 0,
-        questions: questions.map(q => ({
-          questionId: q._id,
-          question: q.question,
-          answers: q.answers,
-          correctAnswer: q.correctAnswer,
-        })),
-        questionsCount: 10,
-        player1Answers: [],
-        player2Answers: [],
-      });
-
-      await newGame.save();
-      return res.status(201).json({ gameId, quizQuestions: newGame.questions });
-    } catch (error) {
-      console.error('Error creating self game:', error);
-      return res.status(500).json({ message: 'Error creating game.' });
-    }
-  } else {
-    return res.status(400).json({ message: 'Invalid game mode.' });
-  }
-});
 
 export const handleGameEvents = (socket: Socket, io: Server) => {
   const timers: { [gameId: string]: NodeJS.Timeout } = {};
@@ -98,7 +58,9 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
         updatedGame.status = "finished";
         await updatedGame.save();
         io.to(gameId).emit("gameFinished", { message: "Game finished." });
-  
+
+        await sendGameResults(updatedGame, io, gameId);
+
         clearTimeout(timers[gameId]);
         delete timers[gameId];
       }
@@ -111,6 +73,65 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
       endTime
     });
   };
+
+  async function sendGameResults(game: IGame, io: Server, gameId: string) {
+    if (game.gameMode === 'self') {
+      const db = admin.firestore();
+      const player1Doc = await db.collection('users').doc(game.player1).get();
+      const player1Data = player1Doc.data();
+      const player1Name = player1Data?.displayName || player1Data?.email;
+
+      const player1Score = game.player1Answers.reduce((count, ans, i) => {
+        if (ans && ans.trim() === game.questions[i].correctAnswer.trim()) {
+          return count + 1;
+        }
+        return count;
+      }, 0);
+
+      io.to(gameId).emit("gameResults", {
+        player1: { id: game.player1, name: player1Name, score: player1Score },
+        player2: null,
+        winner: player1Name
+      });
+    } else {
+      const db = admin.firestore();
+
+      const player1Doc = await db.collection('users').doc(game.player1).get();
+      const player1Data = player1Doc.data();
+      const player1Name = player1Data?.displayName || player1Data?.email;
+
+      const player2Doc = await db.collection('users').doc(game.player2!).get();
+      const player2Data = player2Doc.data();
+      const player2Name = player2Data?.displayName || player2Data?.email;
+
+      const player1Score = game.player1Answers.reduce((count, ans, i) => {
+        if (ans && ans.trim() === game.questions[i].correctAnswer.trim()) {
+          return count + 1;
+        }
+        return count;
+      }, 0);
+
+      const player2Score = game.player2Answers.reduce((count, ans, i) => {
+        if (ans && ans.trim() === game.questions[i].correctAnswer.trim()) {
+          return count + 1;
+        }
+        return count;
+      }, 0);
+
+      let winner = 'draw';
+      if (player1Score > player2Score) {
+        winner = player1Name;
+      } else if (player2Score > player1Score) {
+        winner = player2Name;
+      }
+
+      io.to(gameId).emit("gameResults", {
+        player1: { id: game.player1, name: player1Name, score: player1Score },
+        player2: { id: game.player2, name: player2Name, score: player2Score },
+        winner
+      });
+    }
+  }
 
   socket.on("joinGame", async ({ gameId, userId }) => {
     socket.join(gameId);
@@ -165,6 +186,7 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
           game.status = "finished";
           await game.save();
           io.to(gameId).emit("gameFinished", { message: "Game finished." });
+          await sendGameResults(game, io, gameId);
         }
       } else {
         if (userId === game.player1) {
@@ -197,6 +219,7 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
             game.status = "finished";
             await game.save();
             io.to(gameId).emit("gameFinished", { message: "Game finished." });
+            await sendGameResults(game, io, gameId);
 
             if (timers[gameId]) {
               clearTimeout(timers[gameId]);
