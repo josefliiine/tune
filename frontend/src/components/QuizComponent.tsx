@@ -105,6 +105,10 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   }, [gameId, userId]);
 
   useEffect(() => {
+    if (isQuizComplete) {
+      setEndTime(null);
+      return;
+    }
     if (!endTime) return;
 
     const updateTimer = () => {
@@ -114,7 +118,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         setTimeLeft(remaining);
       } else {
         setTimeLeft(0);
-        socket.emit("submitAnswer", { gameId, userId, answer: null });
+        if (!isQuizComplete) {
+          socket.emit("submitAnswer", { gameId, userId, answer: null });
+        }
       }
     };
 
@@ -123,7 +129,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     const timerInterval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(timerInterval);
-  }, [endTime, gameId, userId]);
+  }, [endTime, gameId, userId, isQuizComplete]);
 
   const handleAnswerSelect = (answer: string) => {
     if (isQuizComplete || selectedAnswer) {

@@ -55,49 +55,55 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
   const startTimer = async (gameId: string) => {
     const game = await Game.findOne({ gameId }) as IGame;
     if (!game) return;
-
+  
+    if (game.status === "finished") return;
+  
     if (timers[gameId]) clearTimeout(timers[gameId]);
-
+  
     const endTime = Date.now() + QUESTION_DURATION;
-
+  
     timers[gameId] = setTimeout(async () => {
       console.log(`Timer expired for game ${gameId}`);
-      const currentQuestion = game.questions[game.currentQuestionIndex];
       
-      if (!game.player1Answered) {
-        game.player1Answers.push(null);
+      const updatedGame = await Game.findOne({ gameId }) as IGame;
+      if (updatedGame.status === "finished") return;
+  
+      const currentQuestion = updatedGame.questions[updatedGame.currentQuestionIndex];
+      
+      if (!updatedGame.player1Answered) {
+        updatedGame.player1Answers.push(null);
       }
-      if ((game.gameMode === "random" || game.gameMode === "friend") && !game.player2Answered) {
-        game.player2Answers.push(null);
+      if ((updatedGame.gameMode === "random" || updatedGame.gameMode === "friend") && !updatedGame.player2Answered) {
+        updatedGame.player2Answers.push(null);
       }
-
-      game.player1Answered = false;
-      game.player2Answered = false;
-
-      if (game.currentQuestionIndex < game.questionsCount - 1) {
-        game.currentQuestionIndex += 1;
-        await game.save();
-
-        const nextQuestion = game.questions[game.currentQuestionIndex];
+  
+      updatedGame.player1Answered = false;
+      updatedGame.player2Answered = false;
+  
+      if (updatedGame.currentQuestionIndex < updatedGame.questionsCount - 1) {
+        updatedGame.currentQuestionIndex += 1;
+        await updatedGame.save();
+  
+        const nextQuestion = updatedGame.questions[updatedGame.currentQuestionIndex];
         const newEndTime = Date.now() + QUESTION_DURATION;
-
+  
         io.to(gameId).emit("nextQuestion", { 
-          currentQuestionIndex: game.currentQuestionIndex, 
+          currentQuestionIndex: updatedGame.currentQuestionIndex, 
           question: nextQuestion,
           endTime: newEndTime
         });
-
+  
         startTimer(gameId);
       } else {
-        game.status = "finished";
-        await game.save();
+        updatedGame.status = "finished";
+        await updatedGame.save();
         io.to(gameId).emit("gameFinished", { message: "Game finished." });
-
+  
         clearTimeout(timers[gameId]);
         delete timers[gameId];
       }
     }, QUESTION_DURATION);
-
+  
     const currentQuestion = game.questions[game.currentQuestionIndex];
     io.to(gameId).emit("nextQuestion", { 
       currentQuestionIndex: game.currentQuestionIndex, 
