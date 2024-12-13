@@ -27,6 +27,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const [abortMessage, setAbortMessage] = useState<string | null>(null);
   const [waitingMessage, setWaitingMessage] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(15);
+  const [endTime, setEndTime] = useState<number | null>(null);
 
   useEffect(() => {
     const handleStartGame = (data: any) => {
@@ -35,18 +36,21 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       setLocalQuizQuestions(data.quizQuestions);
       setIsQuizComplete(false);
       setScore(0);
-      setTimeLeft(15);
+      setEndTime(Date.now() + 15000);
     };
 
     const handleNextQuestion = (data: any) => {
       console.log("Next question:", data);
-      setTimeout(() => {
-        setCurrentQuestionIndex(data.currentQuestionIndex);
-        setIsCorrect(null);
-        setSelectedAnswer(null);
-        setWaitingMessage(null);
-        setTimeLeft(15);
-      }, 2000);
+      setCurrentQuestionIndex(data.currentQuestionIndex);
+      setLocalQuizQuestions((prevQuestions) => {
+        const newQuestions = [...prevQuestions];
+        newQuestions[data.currentQuestionIndex] = data.question;
+        return newQuestions;
+      });
+      setIsCorrect(null);
+      setSelectedAnswer(null);
+      setWaitingMessage(null);
+      setEndTime(data.endTime);
     };
 
     const handlePlayerAnswered = (data: any) => {
@@ -101,17 +105,25 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   }, [gameId, userId]);
 
   useEffect(() => {
-    if (timeLeft <= 0) {
-      socket.emit("submitAnswer", { gameId, userId, answer: null });
-      return;
-    }
+    if (!endTime) return;
 
-    const timer = setInterval(() => {
-      setTimeLeft((prevTime) => prevTime - 1);
-    }, 1000);
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = Math.floor((endTime - now) / 1000);
+      if (remaining >= 0) {
+        setTimeLeft(remaining);
+      } else {
+        setTimeLeft(0);
+        socket.emit("submitAnswer", { gameId, userId, answer: null });
+      }
+    };
 
-    return () => clearInterval(timer);
-  }, [timeLeft, gameId, userId]);
+    updateTimer();
+
+    const timerInterval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(timerInterval);
+  }, [endTime, gameId, userId]);
 
   const handleAnswerSelect = (answer: string) => {
     if (isQuizComplete || selectedAnswer) {
