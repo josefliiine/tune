@@ -167,6 +167,91 @@ body {
   background: none;
 }
 
+.highscore-section {
+  background-color: #FDF5E6;
+  padding: 5px;
+  margin-top: 20px;
+  width: 80%;
+  border-radius: 5px;
+  border: 3px solid black;
+}
+
+.highscore-section h2 {
+  color: #CC5500;
+  font-size: 1.4em;
+  margin-bottom: 15px;
+}
+
+.highscore-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.highscore-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.highscore-item:last-child {
+  border-bottom: none;
+}
+
+.game-info {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-bottom: 5px;
+  gap: 15px;
+}
+
+.game-mode {
+  font-weight: bold;
+  color: #555;
+  font-size: 1em;
+}
+
+.result {
+  text-transform: capitalize;
+  font-weight: bold;
+  font-size: 0.95em;
+}
+
+.result.win {
+  color: #4CAF50;
+}
+
+.result.lose {
+  color: #f44336;
+}
+
+.result.draw {
+  color: #9e9e9e;
+}
+
+.result.completed {
+  color: #CC5500;
+}
+
+.game-date {
+  color: #777;
+  font-size: 0.85em;
+}
+
+.players-info {
+  text-align: left;
+  font-size: 0.95em;
+  color: #333;
+}
+
+.player-score {
+  display: inline-block;
+}
+
+.player-score span {
+  display: block;
+}
+
 /* Style for log in, sign up and reset password */
 
 .form-page {
@@ -561,6 +646,12 @@ button:hover {
 
 .game-item strong {
   margin-right: 5px;
+}
+
+.quiz-content {
+  display: flex;
+  height: 85vh;
+  width: 100vw;
 }
 
 /* Bigger screens */

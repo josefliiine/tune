@@ -225,7 +225,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   }
 
   return (
-    <div>
+    <div className="quiz-content">
+      <main className="main-content">
       <h2>Question {currentQuestionIndex + 1}</h2>
       <p>{currentQ.question}</p>
       <div>
@@ -275,6 +276,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
           Svara med röst
         </button>
       )}
+      </main>
     </div>
   );
 };

@@ -42,7 +42,6 @@ const MyFriends = () => {
 
   return (
     <div>
-      <h2>My Friends</h2>
       <div className="friends-grid">
         {friends.map((friend) => (
           <FriendCard key={friend.friendId} friend={friend} onRemove={handleRemoveFriend} />

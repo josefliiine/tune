@@ -288,4 +288,78 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
   });
 };
 
+router.get('/latest', authenticate, async (req: Request, res: Response) => {
+  try {
+    const latestGames = await Game.find({})
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .exec();
+
+    const gamesWithUserNames = await Promise.all(latestGames.map(async (game: IGame) => {
+      const db = admin.firestore();
+
+      const player1Doc = await db.collection('users').doc(game.player1).get();
+      const player1Data = player1Doc.exists ? player1Doc.data() : null;
+      const player1Name = player1Data?.displayName || player1Data?.email || 'Unknown';
+
+      let player2Name = null;
+      if (game.player2) {
+        const player2Doc = await db.collection('users').doc(game.player2).get();
+        const player2Data = player2Doc.exists ? player2Doc.data() : null;
+        player2Name = player2Data?.displayName || player2Data?.email || 'Unknown';
+      }
+
+      const player1Score = game.player1Answers.reduce((count, ans, idx) => {
+        if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+          return count + 1;
+        }
+        return count;
+      }, 0);
+
+      let player2Score = null;
+      if (game.player2) {
+        player2Score = game.player2Answers.reduce((count, ans, idx) => {
+          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+            return count + 1;
+          }
+          return count;
+        }, 0);
+      }
+
+      let result = 'draw';
+      if (game.gameMode !== 'self') {
+        if (player1Score > player2Score!) {
+          result = 'win';
+        } else if (player2Score! > player1Score) {
+          result = 'lose';
+        }
+      } else {
+        result = 'completed';
+      }
+
+      return {
+        gameId: game.gameId,
+        gameMode: game.gameMode,
+        player1: {
+          id: game.player1,
+          name: player1Name,
+          score: player1Score,
+        },
+        player2: game.player2 ? {
+          id: game.player2,
+          name: player2Name,
+          score: player2Score,
+        } : null,
+        result,
+        createdAt: game.createdAt,
+      };
+    }));
+
+    res.json(gamesWithUserNames);
+  } catch (error) {
+    console.error('Error fetching latest games:', error);
+    res.status(500).json({ message: 'Error fetching latest games.' });
+  }
+});
+
 export default router;
