@@ -27,6 +27,10 @@ const HamburgerMenu = () => {
       navigate('/friends-page')
     };
 
+    const navigateToMyStatisticsPage = () => {
+      navigate('/mystatistics-page')
+    };
+
     const logOut = () => {
       signOut(auth).then(() => {
         navigate('/')
@@ -50,7 +54,7 @@ const HamburgerMenu = () => {
                 <li onClick={navigateToStartPage}>Game page</li>
                 <li onClick={navigateToUserPage}>My page</li>
                 <li onClick={navigateToFriendsPage}>My friends</li>
-                <li>My statistics</li>
+                <li onClick={navigateToMyStatisticsPage}>My statistics</li>
                 <li onClick={logOut}>Log out</li>
               </ul>
             </div>

@@ -1,7 +1,11 @@
 import express, { Request, Response } from "express";
 import admin from "../firebase";
+import { getUserStatistics } from "../controllers/statisticsController";
+import { authenticate } from "../middleware/auth";
 
 const router = express.Router();
+
+router.get('/statistics', authenticate, getUserStatistics);
 
 router.get("/:userId", async (req: Request, res: Response) => {
   const { userId } = req.params;

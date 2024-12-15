@@ -11,6 +11,7 @@ import DifficultyPage from "./pages/auth/DifficultyPage.tsx";
 import NotFoundPage from "./pages/NotFoundPage.tsx";
 import ProtectedRoutes from "./components/ProtectedRoutes.tsx";
 import IncomingChallenges from "./components/IncomingChallenges.tsx";
+import MyStatisticsPage from "./pages/auth/MyStatisticsPage.tsx";
 
 function App() {
 
@@ -33,6 +34,7 @@ function App() {
           path="/difficulty-page"
           element={<DifficultyPage />}
           />
+          <Route path="/mystatistics-page" element={<MyStatisticsPage />} />
         </Route>
       </Route>
     </Routes>
