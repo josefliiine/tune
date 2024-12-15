@@ -5,8 +5,8 @@ import { db } from "../services/firebase";
 interface Friend {
   id: string;
   friendId: string;
-  friendName?: string;
-  friendEmail?: string;
+  friendName: string;
+  friendEmail: string;
 }
 
 const useMyFriends = (currentUserId: string | null) => {

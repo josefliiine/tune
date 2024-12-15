@@ -463,7 +463,7 @@ button:hover {
   width: 100vw;
 }
 
-/* src/components/Modal.css */
+/* MODAL */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -494,6 +494,73 @@ button:hover {
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
+}
+
+/*FRIENDS*/
+
+.friends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  padding: 0;
+}
+
+.friend-card {
+  border: 1px solid #ddd;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.friend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.friend-name {
+  margin: 0;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.friend-email {
+  margin: 0;
+  color: #555;
+  font-size: 0.9em;
+}
+
+.friend-actions .icon-trash {
+  cursor: pointer;
+  color: #d11a2a;
+  font-size: 1.2em;
+}
+
+.friend-games {
+  margin-top: 15px;
+}
+
+.games-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.game-item {
+  margin-bottom: 8px;
+  padding: 5px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.game-item:last-child {
+  border-bottom: none;
+}
+
+.game-item strong {
+  margin-right: 5px;
 }
 
 /* Bigger screens */

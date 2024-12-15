@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import Game, { IGame } from '../models/Game';
 import { authenticate } from '../middleware/auth';
 import Question from '../models/Question';
@@ -7,7 +7,7 @@ import admin from '../firebase';
 
 const router = express.Router();
 
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, async (req: Request, res: Response) => {
   try {
     const { userId, difficulty, gameMode } = req.body;
 
@@ -53,8 +53,77 @@ router.post('/', authenticate, async (req, res) => {
   }
 });
 
-export const handleGameEvents = (socket: Socket, io: Server) => {
+router.get('/friends/:friendId/games', authenticate, async (req: Request, res: Response) => {
+  const friendId = req.params.friendId;
 
+  try {
+    const games = await Game.find({
+      $or: [{ player1: friendId }, { player2: friendId }]
+    })
+    .sort({ createdAt: -1 })
+    .limit(3)
+    .exec();
+
+    const latestGames = games.map((game: IGame) => {
+      let correctAnswers = 0;
+      if (game.gameMode === 'self') {
+        correctAnswers = game.player1Answers.reduce((count, ans, idx) => {
+          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+            return count + 1;
+          }
+          return count;
+        }, 0);
+      } else {
+        const isPlayer1 = game.player1 === friendId;
+        const userAnswers = isPlayer1 ? game.player1Answers : game.player2Answers;
+        correctAnswers = userAnswers.reduce((count, ans, idx) => {
+          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+            return count + 1;
+          }
+          return count;
+        }, 0);
+      }
+
+      let result = 'draw';
+      if (game.gameMode !== 'self') {
+        const player1Score = game.player1Answers.reduce((count, ans, idx) => {
+          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+            return count + 1;
+          }
+          return count;
+        }, 0);
+        const player2Score = game.player2Answers.reduce((count, ans, idx) => {
+          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+            return count + 1;
+          }
+          return count;
+        }, 0);
+        if (player1Score > player2Score) {
+          result = game.player1 === friendId ? 'win' : 'lose';
+        } else if (player2Score > player1Score) {
+          result = game.player2 === friendId ? 'win' : 'lose';
+        }
+      } else {
+        result = 'completed';
+      }
+
+      return {
+        gameId: game.gameId,
+        gameMode: game.gameMode,
+        correctAnswers,
+        result,
+        createdAt: game.createdAt,
+      };
+    });
+
+    res.json(latestGames);
+  } catch (error) {
+    console.error('Error fetching friend\'s games:', error);
+    res.status(500).json({ message: 'Error fetching friend\'s games.' });
+  }
+});
+
+export const handleGameEvents = (socket: Socket, io: Server) => {
   async function sendGameResults(game: IGame, io: Server, gameId: string) {
     if (game.gameMode === 'self') {
       const db = admin.firestore();

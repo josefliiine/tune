@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import useMyFriends from "../hooks/useMyFriends";
+import useFriendGames from "../hooks/useFriendGames";
 import { auth } from "../services/firebase";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
@@ -42,24 +43,87 @@ const MyFriends = () => {
   return (
     <div>
       <h2>My Friends</h2>
-      <ul>
+      <div className="friends-grid">
         {friends.map((friend) => (
-          <li key={friend.id} style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
-            <div style={{ flexGrow: 1 }}>
-              <p style={{ margin: 0, fontWeight: "bold" }}>{friend.friendName}</p>
-              <p style={{ margin: 0 }}>{friend.friendEmail}</p>
-            </div>
-            <FontAwesomeIcon
-              icon={faTrash}
-              style={{ cursor: "pointer", color: "black", marginLeft: "10px" }}
-              onClick={() => handleRemoveFriend(friend.friendId)}
-              title="Remove Friend"
-            />
-          </li>
+          <FriendCard key={friend.friendId} friend={friend} onRemove={handleRemoveFriend} />
         ))}
-      </ul>
+      </div>
     </div>
   );
+};
+
+interface FriendCardProps {
+  friend: {
+    friendId: string;
+    friendName: string;
+    friendEmail: string;
+  };
+  onRemove: (friendId: string) => void;
+}
+
+const FriendCard: React.FC<FriendCardProps> = ({ friend, onRemove }) => {
+  const { games, loading, error } = useFriendGames(friend.friendId);
+
+  const getResultStyle = (result: string) => {
+    switch(result) {
+      case 'win':
+        return { color: 'green' };
+      case 'lose':
+        return { color: 'red' };
+      case 'draw':
+        return { color: 'gray' };
+      case 'completed':
+        return { color: 'blue' };
+      default:
+        return {};
+    }
+  };
+
+  return (
+    <div className="friend-card">
+      <div className="friend-header">
+        <div className="friend-info">
+          <p className="friend-name">{friend.friendName}</p>
+          <p className="friend-email">{friend.friendEmail}</p>
+        </div>
+        <div className="friend-actions">
+          <FontAwesomeIcon
+            icon={faTrash}
+            className="icon-trash"
+            onClick={() => onRemove(friend.friendId)}
+            title="Remove friend"
+          />
+        </div>
+      </div>
+      <div className="friend-games">
+        <h4>Latest games:</h4>
+        {loading ? (
+          <p>Loading games...</p>
+        ) : error ? (
+          <p>Error: {error}</p>
+        ) : games.length === 0 ? (
+          <p>No latest games.</p>
+        ) : (
+          <ul className="games-list">
+            {games.map((game) => (
+              <li key={game.gameId} className="game-item">
+                <strong>{mapGameMode(game.gameMode)}</strong> - <span style={getResultStyle(game.result)}>{game.result}</span> - {new Date(game.createdAt).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const mapGameMode = (mode: string) => {
+  switch(mode) {
+      case 'self': return 'Self';
+      case 'random': return 'Random';
+      case 'friend': return 'Friend';
+      default: return mode;
+  }
 };
 
 export default MyFriends;
