@@ -26,12 +26,54 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const [localQuizQuestions, setLocalQuizQuestions] = useState<Question[]>(initialQuizQuestions);
   const [abortMessage, setAbortMessage] = useState<string | null>(null);
   const [waitingMessage, setWaitingMessage] = useState<string | null>(null);
-  
+
   const [finalResults, setFinalResults] = useState<{
     player1?: { id: string; name: string; score: number };
     player2?: { id: string; name: string; score: number };
     winner?: string;
   } | null>(null);
+
+  const [recognitionInstance, setRecognitionInstance] = useState<SpeechRecognition | null>(null);
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn("Web Speech API is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'sv-SE';
+    recognition.interimResults = false;
+    recognition.continuous = true;
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript.trim().toLowerCase();
+      console.log("User said:", transcript);
+      handleVoiceAnswer(transcript);
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error("Speech Recognition Error:", event.error, event.message);
+      if (event.error === 'no-speech') {
+        recognition.start();
+      }
+    };
+
+    recognition.onspeechstart = () => {
+      console.log("Speech has been detected.");
+    };
+
+    recognition.onspeechend = () => {
+      console.log("Speech has stopped being detected.");
+    };
+
+    recognition.onnomatch = () => {
+      console.log("No match found for your speech.");
+    };
+
+    setRecognitionInstance(recognition);
+  }, []);
 
   useEffect(() => {
     const handleStartGame = (data: any) => {
@@ -112,8 +154,26 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     }
 
     setSelectedAnswer(answer);
-
     socket.emit("submitAnswer", { gameId, userId, answer });
+  };
+
+  const handleVoiceAnswer = (spokenText: string) => {
+    if (isQuizComplete) return;
+
+    const currentQ = localQuizQuestions[currentQuestionIndex];
+    if (!currentQ) return;
+
+    const normalizedSpokenText = spokenText.toLowerCase();
+    const matchedAnswer = currentQ.answers.find(answer =>
+      answer.toLowerCase() === normalizedSpokenText
+    );
+
+    if (matchedAnswer) {
+      socket.emit("submitAnswer", { gameId, userId, answer: matchedAnswer });
+      setSelectedAnswer(matchedAnswer);
+    } else {
+      console.log("No options matches your answer.");
+    }
   };
 
   if (isQuizComplete) {
@@ -178,7 +238,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
             <motion.button
               key={index}
               onClick={() => handleAnswerSelect(answer)}
-              disabled={isQuizComplete || !!selectedAnswer}
+              disabled={Boolean(isQuizComplete || selectedAnswer)}
               initial={{ scale: 1, borderColor: "gray" }}
               animate={{
                 scale: isSelected ? 1.1 : 1,
@@ -208,6 +268,12 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       )}
       {waitingMessage && (
         <p style={{ color: "black", fontStyle: "italic" }}>{waitingMessage}</p>
+      )}
+
+      {recognitionInstance && (
+        <button onClick={() => recognitionInstance.start()} disabled={Boolean(selectedAnswer || isQuizComplete)}>
+          Svara med röst
+        </button>
       )}
     </div>
   );

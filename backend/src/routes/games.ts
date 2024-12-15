@@ -7,6 +7,52 @@ import admin from '../firebase';
 
 const router = express.Router();
 
+router.post('/', authenticate, async (req, res) => {
+  try {
+    const { userId, difficulty, gameMode } = req.body;
+
+    if (gameMode !== 'self') {
+      return res.status(400).json({ message: 'Invalid game mode. Only "self" is supported here.' });
+    }
+
+    const questions = await Question.aggregate([
+      { $match: { difficulty } },
+      { $sample: { size: 10 } }
+    ]);
+
+    const gameId = `self-${userId}-${Date.now()}`;
+
+    const newGame = new Game({
+      gameId,
+      player1: userId,
+      player2: null,
+      gameMode: 'self',
+      status: 'started',
+      createdAt: new Date(),
+      questions: questions.map((q: any) => ({
+        questionId: q._id.toString(),
+        question: q.question,
+        answers: q.answers,
+        correctAnswer: q.correctAnswer,
+      })),
+      questionsCount: 10,
+      player1Answers: [],
+      player2Answers: [],
+    });
+
+    await newGame.save();
+
+    return res.json({
+      gameId: newGame.gameId,
+      quizQuestions: newGame.questions,
+    });
+
+  } catch (error) {
+    console.error('Error creating self game:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 export const handleGameEvents = (socket: Socket, io: Server) => {
 
   async function sendGameResults(game: IGame, io: Server, gameId: string) {
