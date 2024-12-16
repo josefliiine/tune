@@ -7,129 +7,13 @@ import admin from '../firebase';
 
 const router = express.Router();
 
-router.post('/', authenticate, async (req: Request, res: Response) => {
-  try {
-    const { userId, difficulty, gameMode } = req.body;
-
-    if (gameMode !== 'self') {
-      return res.status(400).json({ message: 'Invalid game mode. Only "self" is supported here.' });
-    }
-
-    const questions = await Question.aggregate([
-      { $match: { difficulty } },
-      { $sample: { size: 10 } }
-    ]);
-
-    const gameId = `self-${userId}-${Date.now()}`;
-
-    const newGame = new Game({
-      gameId,
-      player1: userId,
-      player2: null,
-      gameMode: 'self',
-      status: 'started',
-      createdAt: new Date(),
-      questions: questions.map((q: any) => ({
-        questionId: q._id.toString(),
-        question: q.question,
-        answers: q.answers,
-        correctAnswer: q.correctAnswer,
-      })),
-      questionsCount: 10,
-      player1Answers: [],
-      player2Answers: [],
-    });
-
-    await newGame.save();
-
-    return res.json({
-      gameId: newGame.gameId,
-      quizQuestions: newGame.questions,
-    });
-
-  } catch (error) {
-    console.error('Error creating self game:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-router.get('/friends/:friendId/games', authenticate, async (req: Request, res: Response) => {
-  const friendId = req.params.friendId;
-
-  try {
-    const games = await Game.find({
-      $or: [{ player1: friendId }, { player2: friendId }]
-    })
-    .sort({ createdAt: -1 })
-    .limit(3)
-    .exec();
-
-    const latestGames = games.map((game: IGame) => {
-      let correctAnswers = 0;
-      if (game.gameMode === 'self') {
-        correctAnswers = game.player1Answers.reduce((count, ans, idx) => {
-          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
-            return count + 1;
-          }
-          return count;
-        }, 0);
-      } else {
-        const isPlayer1 = game.player1 === friendId;
-        const userAnswers = isPlayer1 ? game.player1Answers : game.player2Answers;
-        correctAnswers = userAnswers.reduce((count, ans, idx) => {
-          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
-            return count + 1;
-          }
-          return count;
-        }, 0);
-      }
-
-      let result = 'draw';
-      if (game.gameMode !== 'self') {
-        const player1Score = game.player1Answers.reduce((count, ans, idx) => {
-          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
-            return count + 1;
-          }
-          return count;
-        }, 0);
-        const player2Score = game.player2Answers.reduce((count, ans, idx) => {
-          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
-            return count + 1;
-          }
-          return count;
-        }, 0);
-        if (player1Score > player2Score) {
-          result = game.player1 === friendId ? 'win' : 'lose';
-        } else if (player2Score > player1Score) {
-          result = game.player2 === friendId ? 'win' : 'lose';
-        }
-      } else {
-        result = 'completed';
-      }
-
-      return {
-        gameId: game.gameId,
-        gameMode: game.gameMode,
-        correctAnswers,
-        result,
-        createdAt: game.createdAt,
-      };
-    });
-
-    res.json(latestGames);
-  } catch (error) {
-    console.error('Error fetching friend\'s games:', error);
-    res.status(500).json({ message: 'Error fetching friend\'s games.' });
-  }
-});
-
 export const handleGameEvents = (socket: Socket, io: Server) => {
   async function sendGameResults(game: IGame, io: Server, gameId: string) {
     if (game.gameMode === 'self') {
       const db = admin.firestore();
       const player1Doc = await db.collection('users').doc(game.player1).get();
       const player1Data = player1Doc.data();
-      const player1Name = player1Data?.displayName || player1Data?.email;
+      const player1Name = player1Data?.displayName || player1Data?.email || 'Unknown';
 
       const player1Score = game.player1Answers.reduce((count, ans, i) => {
         if (ans && ans.trim() === game.questions[i].correctAnswer.trim()) {
@@ -148,11 +32,11 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
 
       const player1Doc = await db.collection('users').doc(game.player1).get();
       const player1Data = player1Doc.data();
-      const player1Name = player1Data?.displayName || player1Data?.email;
+      const player1Name = player1Data?.displayName || player1Data?.email || 'Unknown';
 
       const player2Doc = await db.collection('users').doc(game.player2!).get();
       const player2Data = player2Doc.data();
-      const player2Name = player2Data?.displayName || player2Data?.email;
+      const player2Name = player2Data?.displayName || player2Data?.email || 'Unknown';
 
       const player1Score = game.player1Answers.reduce((count, ans, i) => {
         if (ans && ans.trim() === game.questions[i].correctAnswer.trim()) {
@@ -280,11 +164,145 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
     }
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log(`User disconnected: ${socket.id}`);
-    io.emit("gameAborted", { message: "A player has disconnected. Game aborted." });
+    const userId = socket.data.userId;
+    if (!userId) return;
+
+    const game = await Game.findOne({ $or: [{ player1: userId }, { player2: userId }] });
+    if (game && game.status !== 'finished' && game.status !== 'aborted') {
+      game.aborted = true;
+      game.status = 'aborted';
+      await game.save();
+      io.to(game.gameId).emit("gameAborted", { message: "A player has disconnected. Game aborted." });
+    }
   });
 };
+
+router.post('/', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { userId, difficulty, gameMode } = req.body;
+
+    if (gameMode !== 'self') {
+      return res.status(400).json({ message: 'Invalid game mode. Only "self" is supported here.' });
+    }
+
+    const questions = await Question.aggregate([
+      { $match: { difficulty } },
+      { $sample: { size: 10 } }
+    ]);
+
+    if (!questions || questions.length === 0) {
+      return res.status(400).json({ message: 'No questions found for the specified difficulty.' });
+    }
+
+    const gameId = `self-${userId}-${Date.now()}`;
+
+    const newGame = new Game({
+      gameId,
+      player1: userId,
+      player2: null,
+      gameMode: 'self',
+      status: 'started',
+      createdAt: new Date(),
+      questions: questions.map((q: any) => ({
+        questionId: q._id.toString(),
+        question: q.question,
+        answers: q.answers,
+        correctAnswer: q.correctAnswer,
+      })),
+      questionsCount: questions.length,
+      player1Answers: [],
+      player2Answers: [],
+      aborted: false,
+    });
+
+    if (newGame.questions.length !== newGame.questionsCount) {
+      return res.status(500).json({ message: 'Mismatch between questions and questionsCount.' });
+    }
+
+    await newGame.save();
+
+    return res.json({
+      gameId: newGame.gameId,
+      quizQuestions: newGame.questions,
+    });
+
+  } catch (error) {
+    console.error('Error creating self game:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.get('/friends/:friendId/games', authenticate, async (req: Request, res: Response) => {
+  const friendId = req.params.friendId;
+
+  try {
+    const games = await Game.find({
+      $or: [{ player1: friendId }, { player2: friendId }]
+    })
+    .sort({ createdAt: -1 })
+    .limit(3)
+    .exec();
+
+    const latestGames = games.map((game: IGame) => {
+      let correctAnswers = 0;
+      if (game.gameMode === 'self') {
+        correctAnswers = game.player1Answers.reduce((count, ans, idx) => {
+          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+            return count + 1;
+          }
+          return count;
+        }, 0);
+      } else {
+        const isPlayer1 = game.player1 === friendId;
+        const userAnswers = isPlayer1 ? game.player1Answers : game.player2Answers;
+        correctAnswers = userAnswers.reduce((count, ans, idx) => {
+          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+            return count + 1;
+          }
+          return count;
+        }, 0);
+      }
+
+      let result = 'draw';
+      if (game.gameMode !== 'self') {
+        const player1Score = game.player1Answers.reduce((count, ans, idx) => {
+          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+            return count + 1;
+          }
+          return count;
+        }, 0);
+        const player2Score = game.player2Answers.reduce((count, ans, idx) => {
+          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+            return count + 1;
+          }
+          return count;
+        }, 0);
+        if (player1Score > player2Score) {
+          result = game.player1 === friendId ? 'win' : 'lose';
+        } else if (player2Score > player1Score) {
+          result = game.player2 === friendId ? 'win' : 'lose';
+        }
+      } else {
+        result = 'completed';
+      }
+
+      return {
+        gameId: game.gameId,
+        gameMode: game.gameMode,
+        correctAnswers,
+        result,
+        createdAt: game.createdAt,
+      };
+    });
+
+    res.json(latestGames);
+  } catch (error) {
+    console.error('Error fetching friend\'s games:', error);
+    res.status(500).json({ message: 'Error fetching friend\'s games.' });
+  }
+});
 
 router.get('/latest', authenticate, async (req: Request, res: Response) => {
   try {
@@ -308,7 +326,12 @@ router.get('/latest', authenticate, async (req: Request, res: Response) => {
       }
 
       const player1Score = game.player1Answers.reduce((count, ans, idx) => {
-        if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+        const question = game.questions[idx];
+        if (!question) {
+          console.warn(`Game ${game.gameId} har ingen fråga vid index ${idx} för player1Answers.`);
+          return count;
+        }
+        if (ans && ans.trim() === question.correctAnswer.trim()) {
           return count + 1;
         }
         return count;
@@ -317,7 +340,12 @@ router.get('/latest', authenticate, async (req: Request, res: Response) => {
       let player2Score = null;
       if (game.player2) {
         player2Score = game.player2Answers.reduce((count, ans, idx) => {
-          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+          const question = game.questions[idx];
+          if (!question) {
+            console.warn(`Game ${game.gameId} har ingen fråga vid index ${idx} för player2Answers.`);
+            return count;
+          }
+          if (ans && ans.trim() === question.correctAnswer.trim()) {
             return count + 1;
           }
           return count;
@@ -335,6 +363,8 @@ router.get('/latest', authenticate, async (req: Request, res: Response) => {
         result = 'completed';
       }
 
+      const isAborted = game.aborted;
+
       return {
         gameId: game.gameId,
         gameMode: game.gameMode,
@@ -349,6 +379,7 @@ router.get('/latest', authenticate, async (req: Request, res: Response) => {
           score: player2Score,
         } : null,
         result,
+        isAborted,
         createdAt: game.createdAt,
       };
     }));

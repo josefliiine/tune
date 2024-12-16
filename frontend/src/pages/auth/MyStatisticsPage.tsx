@@ -79,7 +79,7 @@ const MyStatisticsPage: React.FC = () => {
     }
 
     return (
-        <div>
+        <div className="start-page">
             <Header />
             <main className="main-content">
                 <h1>My Statistics</h1>

@@ -18,13 +18,13 @@ const StartPage = () => {
         <button className="button-start-page" onClick={handleStartGame}>Start Game</button>
 
         <section className="highscore-section">
-          <h2>Senaste Spel</h2>
+          <h2>Latest Games</h2>
           {loading ? (
-            <p>Laddar de senaste spelen...</p>
+            <p>Loading latest games...</p>
           ) : error ? (
-            <p>Fel: {error}</p>
+            <p>Error: {error}</p>
           ) : latestGames.length === 0 ? (
-            <p>Inga spel har spelats än.</p>
+            <p>No latest games played yet.</p>
           ) : (
             <ul className="highscore-list">
               {latestGames.map((game) => (

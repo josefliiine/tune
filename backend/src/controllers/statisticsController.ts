@@ -6,7 +6,8 @@ export const getUserStatistics = async (req: Request, res: Response) => {
 
     try {
         const games = await Game.find({
-            $or: [{ player1: userId }, { player2: userId }]
+            $or: [{ player1: userId }, { player2: userId }],
+            status: 'finished'
         })
         .sort({ createdAt: -1 })
         .limit(10)
@@ -16,7 +17,12 @@ export const getUserStatistics = async (req: Request, res: Response) => {
             let correctAnswers = 0;
             if (game.gameMode === 'self') {
                 correctAnswers = game.player1Answers.reduce((count, ans, idx) => {
-                    if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+                    const question = game.questions[idx];
+                    if (!question) {
+                        console.warn(`Game ${game.gameId} has no question with index ${idx} for player1Answers.`);
+                        return count;
+                    }
+                    if (ans && ans.trim() === question.correctAnswer.trim()) {
                         return count + 1;
                     }
                     return count;
@@ -25,7 +31,12 @@ export const getUserStatistics = async (req: Request, res: Response) => {
                 const isPlayer1 = game.player1 === userId;
                 const userAnswers = isPlayer1 ? game.player1Answers : game.player2Answers;
                 correctAnswers = userAnswers.reduce((count, ans, idx) => {
-                    if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+                    const question = game.questions[idx];
+                    if (!question) {
+                        console.warn(`Game ${game.gameId} has no question with index ${idx} for userAnswers.`);
+                        return count;
+                    }
+                    if (ans && ans.trim() === question.correctAnswer.trim()) {
                         return count + 1;
                     }
                     return count;
@@ -35,13 +46,23 @@ export const getUserStatistics = async (req: Request, res: Response) => {
             let result = 'draw';
             if (game.gameMode !== 'self') {
                 const player1Score = game.player1Answers.reduce((count, ans, idx) => {
-                    if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+                    const question = game.questions[idx];
+                    if (!question) {
+                        console.warn(`Game ${game.gameId} has no question with index ${idx} for player1Answers.`);
+                        return count;
+                    }
+                    if (ans && ans.trim() === question.correctAnswer.trim()) {
                         return count + 1;
                     }
                     return count;
                 }, 0);
                 const player2Score = game.player2Answers.reduce((count, ans, idx) => {
-                    if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+                    const question = game.questions[idx];
+                    if (!question) {
+                        console.warn(`Game ${game.gameId} has no question with index ${idx} for player2Answers.`);
+                        return count;
+                    }
+                    if (ans && ans.trim() === question.correctAnswer.trim()) {
                         return count + 1;
                     }
                     return count;
