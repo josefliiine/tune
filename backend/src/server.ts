@@ -18,7 +18,7 @@ const app = express();
 
 // CORS middleware
 app.use(cors({
-  origin: 'https://6760424533df644a74635171--tune-quiz.netlify.app/',
+  origin: 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -45,7 +45,7 @@ if (!DATABASE_URL) {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://6760424533df644a74635171--tune-quiz.netlify.app/",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST"]
   }
 });

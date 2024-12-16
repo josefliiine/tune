@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { AuthContext } from '../contexts/AuthContextProvider';
 
 const HamburgerMenu = () => {
     const [openHamburgerMenu, setOpenHamburgerMenu] = useState(false);
     const navigate = useNavigate();
+    const authContext = useContext(AuthContext);
 
     const openMenu = () => {
         setOpenHamburgerMenu(!openHamburgerMenu);
@@ -16,28 +16,33 @@ const HamburgerMenu = () => {
     };
 
     const navigateToUserPage = () => {
-      navigate('/user-page')
+      navigate('/user-page');
+      closeMenu();
     };
 
     const navigateToStartPage = () => {
-      navigate('/start-page')
+      navigate('/start-page');
+      closeMenu();
     };
 
     const navigateToFriendsPage = () => {
-      navigate('/friends-page')
+      navigate('/friends-page');
+      closeMenu();
     };
 
     const navigateToMyStatisticsPage = () => {
-      navigate('/mystatistics-page')
+      navigate('/mystatistics-page');
+      closeMenu();
     };
 
-    const logOut = () => {
-      signOut(auth).then(() => {
-        navigate('/')
-      }).catch((error) => {
-        console.error(error);
-      })
-    }
+    const handleLogout = async () => {
+      try {
+        await authContext?.logout();
+        navigate('/');
+      } catch (error) {
+        console.error('Error when logging out:', error);
+      }
+    };
 
     return (
         <div>
@@ -55,7 +60,7 @@ const HamburgerMenu = () => {
                 <li onClick={navigateToUserPage}>My page</li>
                 <li onClick={navigateToFriendsPage}>My friends</li>
                 <li onClick={navigateToMyStatisticsPage}>My statistics</li>
-                <li onClick={logOut}>Log out</li>
+                <li onClick={handleLogout}>Log out</li>
               </ul>
             </div>
           )}

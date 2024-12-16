@@ -6,17 +6,17 @@ export default defineConfig({
   server: {
     proxy: {
       '/questions': {
-        target: 'https://tune-backend-opj9.onrender.com',
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },
       '/games': {
-        target: 'https://tune-backend-opj9.onrender.com',
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },
       '/match': {
-        target: 'https://tune-backend-opj9.onrender.com',
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },
