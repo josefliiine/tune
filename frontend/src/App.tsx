@@ -12,6 +12,7 @@ import NotFoundPage from "./pages/NotFoundPage.tsx";
 import ProtectedRoutes from "./components/ProtectedRoutes.tsx";
 import IncomingChallenges from "./components/IncomingChallenges.tsx";
 import MyStatisticsPage from "./pages/auth/MyStatisticsPage.tsx";
+import { ToastContainer } from "react-toastify";
 
 function App() {
 
@@ -30,14 +31,18 @@ function App() {
           <Route path="/start-page" element={<StartPage />} />
           <Route path="/user-page" element={<UserPage />} />
           <Route path="/friends-page" element={<FriendsPage />} />
-          <Route
-          path="/difficulty-page"
-          element={<DifficultyPage />}
-          />
+          <Route path="/difficulty-page" element={<DifficultyPage />} />
           <Route path="/mystatistics-page" element={<MyStatisticsPage />} />
         </Route>
       </Route>
     </Routes>
+
+    <ToastContainer
+				closeOnClick
+				theme="colored"
+				limit={3}
+				stacked
+			/>
     </>
   )
 }

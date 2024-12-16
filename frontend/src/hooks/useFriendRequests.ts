@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { collection, onSnapshot, where, Timestamp, query, getDoc, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
+import { toast } from "react-toastify";
 
 interface FriendRequest {
   id: string;
@@ -23,30 +24,29 @@ const useFriendRequests = (currentUserId: string | null) => {
 
       const friendsListCollection = collection(db, "friendsList");
 
-      // Add both users in eachothers friends list
       await Promise.all([
         addDoc(friendsListCollection, { userId, friendId }),
         addDoc(friendsListCollection, { userId: friendId, friendId: userId }),
       ]);
 
-      console.log(`Vänförfrågan mellan ${userId} och ${friendId} har accepterats.`);
+      setRequests((prevRequests) => prevRequests.filter((request) => request.id !== requestId));
 
-      setRequests(prevRequests => prevRequests.filter(request => request.id !== requestId));
+      toast.success("Friend request accepted!");
     } catch (error) {
-      console.error("Misslyckades med att acceptera vänförfrågan:", error);
-      throw error;
+      console.error("Failed to accept friend request:", error);
+      toast.error("Failed to accept the friend request.");
     }
   };
 
   const rejectFriendRequest = async (requestId: string) => {
     try {
       await deleteDoc(doc(db, "friends", requestId));
-      console.log(`Vänförfrågan ${requestId} har avslagats.`);
+      setRequests((prevRequests) => prevRequests.filter((request) => request.id !== requestId));
 
-      setRequests(prevRequests => prevRequests.filter(request => request.id !== requestId));
+      toast.info("Friend request rejected.");
     } catch (error) {
       console.error("Failed to reject friend request:", error);
-      throw error;
+      toast.error("Failed to reject the friend request.");
     }
   };
 
@@ -63,6 +63,19 @@ const useFriendRequests = (currentUserId: string | null) => {
       friendRequestQuery,
       async (snapshot) => {
         try {
+          const newRequests = snapshot.docChanges().filter((change) => change.type === "added");
+
+          if (newRequests.length > 0) {
+            newRequests.forEach(async (change) => {
+              const data = change.doc.data();
+              const userDoc = await getDoc(doc(db, "users", data.userId));
+              const userData = userDoc.exists() ? userDoc.data() : null;
+              const senderName = userData?.displayName || "Unknown user";
+
+              toast.info(`${senderName} has sent you a friend request!`);
+            });
+          }
+
           const requestsWithUserInfo = await Promise.all(
             snapshot.docs.map(async (docSnapshot) => {
               const data = docSnapshot.data();
