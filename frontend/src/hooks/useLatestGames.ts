@@ -13,7 +13,6 @@ interface LatestGame {
   gameMode: 'self' | 'random' | 'friend';
   player1: Player;
   player2: Player | null;
-  result: 'win' | 'lose' | 'draw' | 'completed';
   createdAt: string;
 }
 

@@ -31,7 +31,6 @@ const StartPage = () => {
                 <li key={game.gameId} className="highscore-item">
                   <div className="game-info">
                     <span className="game-mode">{mapGameMode(game.gameMode)}</span>
-                    <span className={`result ${game.result}`}>{mapResult(game.result)}</span>
                     <span className="game-date">{formatDate(game.createdAt)}</span>
                   </div>
                   <div className="players-info">
@@ -53,16 +52,6 @@ const StartPage = () => {
       </main>
     </div>
   );
-};
-
-const mapResult = (result: 'win' | 'lose' | 'draw' | 'completed') => {
-  switch(result) {
-      case 'win': return 'Win';
-      case 'lose': return 'Lose';
-      case 'draw': return 'Draw';
-      case 'completed': return 'Completed';
-      default: return result;
-  }
 };
 
 const formatDate = (dateString: string) => {

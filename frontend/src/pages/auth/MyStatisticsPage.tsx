@@ -3,12 +3,11 @@ import api from "../../api/axiosConfig";
 import { getIdToken } from "../../utils/getIdToken";
 import useAuth from "../../hooks/useAuth";
 import Header from "../../components/Header";
-import Modal from "../../components/Modal";
+import { toast } from "react-toastify";
 
 interface Statistic {
     gameMode: 'self' | 'random' | 'friend';
     correctAnswers: number;
-    result: string;
     createdAt: string;
 }
 
@@ -16,12 +15,11 @@ const MyStatisticsPage: React.FC = () => {
     const { userId } = useAuth();
     const [statistics, setStatistics] = useState<Statistic[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchStatistics = async () => {
             if (!userId) {
-                setError("User is not logged in.");
+                toast.error("User is not logged in.");
                 setLoading(false);
                 return;
             }
@@ -33,14 +31,19 @@ const MyStatisticsPage: React.FC = () => {
                         Authorization: `Bearer ${token}`,
                     },
                 });
-                setStatistics(response.data);
+                const filteredData: Statistic[] = response.data.map((stat: any) => ({
+                    gameMode: stat.gameMode,
+                    correctAnswers: stat.correctAnswers,
+                    createdAt: stat.createdAt,
+                }));
+                setStatistics(filteredData);
                 setLoading(false);
             } catch (err: any) {
                 console.error("Error fetching statistics:", err);
                 if (err.response && err.response.status === 404) {
-                    setError("Could not fins statistics.");
+                    toast.error("Could not find statistics.");
                 } else {
-                    setError("Failed to load statistics.");
+                    toast.error("Failed to load statistics.");
                 }
                 setLoading(false);
             }
@@ -67,17 +70,6 @@ const MyStatisticsPage: React.FC = () => {
         );
     }
 
-    if (error) {
-        return (
-            <div>
-                <Header />
-                <Modal onClose={() => setError(null)}>
-                    <p>{error}</p>
-                </Modal>
-            </div>
-        );
-    }
-
     return (
         <div className="start-page">
             <Header />
@@ -91,7 +83,6 @@ const MyStatisticsPage: React.FC = () => {
                             <tr>
                                 <th>Gametype</th>
                                 <th>Right answers</th>
-                                <th>Result</th>
                                 <th>Date</th>
                             </tr>
                         </thead>
@@ -100,7 +91,6 @@ const MyStatisticsPage: React.FC = () => {
                                 <tr key={index}>
                                     <td>{mapGameMode(stat.gameMode)}</td>
                                     <td>{stat.correctAnswers}</td>
-                                    <td>{stat.result}</td>
                                     <td>{new Date(stat.createdAt).toLocaleString()}</td>
                                 </tr>
                             ))}
