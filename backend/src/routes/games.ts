@@ -230,12 +230,10 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
           await game.save();
           const nextQuestion = game.questions[game.currentQuestionIndex];
           
-          setTimeout(() => {
-            io.to(gameId).emit("nextQuestion", { 
-              currentQuestionIndex: game.currentQuestionIndex, 
-              question: nextQuestion
-            });
-          }, 3000);
+          io.to(gameId).emit("nextQuestion", { 
+            currentQuestionIndex: game.currentQuestionIndex, 
+            question: nextQuestion
+          });
         } else {
           game.status = "finished";
           await game.save();

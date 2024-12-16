@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import socket from "../socket";
 import { Question } from "../types/Questions";
@@ -35,8 +35,15 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
   const [recognitionInstance, setRecognitionInstance] = useState<SpeechRecognition | null>(null);
 
+  const [timer, setTimer] = useState<number>(15);
+
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const nextQuestionDataRef = useRef<any>(null);
+  const nextQuestionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       console.warn("Web Speech API is not supported in this browser.");
       return;
@@ -84,15 +91,27 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     };
 
     const handleNextQuestion = (data: any) => {
-      setCurrentQuestionIndex(data.currentQuestionIndex);
-      setLocalQuizQuestions((prevQuestions) => {
-        const newQuestions = [...prevQuestions];
-        newQuestions[data.currentQuestionIndex] = data.question;
-        return newQuestions;
-      });
-      setIsCorrect(null);
-      setSelectedAnswer(null);
-      setWaitingMessage(null);
+      setIsTransitioning(true);
+      nextQuestionDataRef.current = data;
+
+      if (nextQuestionTimeoutRef.current) {
+        clearTimeout(nextQuestionTimeoutRef.current);
+      }
+
+      nextQuestionTimeoutRef.current = setTimeout(() => {
+        const qData = nextQuestionDataRef.current;
+        setCurrentQuestionIndex(qData.currentQuestionIndex);
+        setLocalQuizQuestions((prevQuestions) => {
+          const newQuestions = [...prevQuestions];
+          newQuestions[qData.currentQuestionIndex] = qData.question;
+          return newQuestions;
+        });
+        setIsCorrect(null);
+        setSelectedAnswer(null);
+        setWaitingMessage(null);
+        nextQuestionDataRef.current = null;
+        setIsTransitioning(false);
+      }, 2000);
     };
 
     const handlePlayerAnswered = (data: any) => {
@@ -145,8 +164,37 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       socket.off("waitingForOpponent", handleWaitingForOpponent);
       socket.off("error", handleError);
       socket.off("gameResults", handleGameResults);
+
+      if (nextQuestionTimeoutRef.current) {
+        clearTimeout(nextQuestionTimeoutRef.current);
+      }
     };
   }, [gameId, userId]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (!isQuizComplete && localQuizQuestions[currentQuestionIndex] && !isTransitioning) {
+      setTimer(15);
+      interval = setInterval(() => {
+        setTimer((prevTimer) => {
+          if (prevTimer > 0 && !selectedAnswer && !isQuizComplete) {
+            return prevTimer - 1;
+          } else if (prevTimer === 0 && !selectedAnswer && !isQuizComplete) {
+            clearInterval(interval!);
+            setTimeout(() => {
+              handleAnswerSelect('');
+            }, 1000);
+          }
+          return prevTimer;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [currentQuestionIndex, isQuizComplete, localQuizQuestions, selectedAnswer, isTransitioning]);
 
   const handleAnswerSelect = (answer: string) => {
     if (isQuizComplete || selectedAnswer) {
@@ -227,55 +275,56 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   return (
     <div className="quiz-content">
       <main className="main-content">
-      <h2>Question {currentQuestionIndex + 1}</h2>
-      <p>{currentQ.question}</p>
-      <div>
-        {currentQ.answers.map((answer, index) => {
-          const isSelected = answer === selectedAnswer;
-          const isCorrectAnswer = isSelected && isCorrect === true;
-          const isWrongAnswer = isSelected && isCorrect === false;
+        <h2>Question {currentQuestionIndex + 1}</h2>
+        <p>{currentQ.question}</p>
+        <p><strong>Timer: {timer}</strong> sekunder kvar</p>
+        <div>
+          {currentQ.answers.map((answer, index) => {
+            const isSelected = answer === selectedAnswer;
+            const isCorrectAnswer = isSelected && isCorrect === true;
+            const isWrongAnswer = isSelected && isCorrect === false;
 
-          return (
-            <motion.button
-              key={index}
-              onClick={() => handleAnswerSelect(answer)}
-              disabled={Boolean(isQuizComplete || selectedAnswer)}
-              initial={{ scale: 1, borderColor: "gray" }}
-              animate={{
-                scale: isSelected ? 1.1 : 1,
-                borderColor: isCorrectAnswer
-                  ? "green"
-                  : isWrongAnswer
-                  ? "red"
-                  : "gray",
-              }}
-              transition={{ duration: 0.3 }}
-              style={{
-                border: "2px solid",
-                padding: "10px",
-                margin: "5px",
-                backgroundColor: isSelected ? (isCorrectAnswer ? "lightgreen" : "lightcoral") : "white",
-              }}
-            >
-              {answer}
-            </motion.button>
-          );
-        })}
-      </div>
-      {selectedAnswer && (
-        <p>
-          {isCorrect ? "Correct!" : `Wrong! The correct answer is: ${currentQ.correctAnswer}`}
-        </p>
-      )}
-      {waitingMessage && (
-        <p style={{ color: "black", fontStyle: "italic" }}>{waitingMessage}</p>
-      )}
+            return (
+              <motion.button
+                key={index}
+                onClick={() => handleAnswerSelect(answer)}
+                disabled={Boolean(isQuizComplete || selectedAnswer)}
+                initial={{ scale: 1, borderColor: "gray" }}
+                animate={{
+                  scale: isSelected ? 1.1 : 1,
+                  borderColor: isCorrectAnswer
+                    ? "green"
+                    : isWrongAnswer
+                    ? "red"
+                    : "gray",
+                }}
+                transition={{ duration: 0.3 }}
+                style={{
+                  border: "2px solid",
+                  padding: "10px",
+                  margin: "5px",
+                  backgroundColor: isSelected ? (isCorrectAnswer ? "lightgreen" : "lightcoral") : "white",
+                }}
+              >
+                {answer}
+              </motion.button>
+            );
+          })}
+        </div>
+        {selectedAnswer && (
+          <p>
+            {isCorrect ? "Correct!" : `Wrong! The correct answer is: ${currentQ.correctAnswer}`}
+          </p>
+        )}
+        {waitingMessage && (
+          <p style={{ color: "black", fontStyle: "italic" }}>{waitingMessage}</p>
+        )}
 
-      {recognitionInstance && (
-        <button onClick={() => recognitionInstance.start()} disabled={Boolean(selectedAnswer || isQuizComplete)}>
-          Svara med röst
-        </button>
-      )}
+        {recognitionInstance && (
+          <button onClick={() => recognitionInstance.start()} disabled={Boolean(selectedAnswer || isQuizComplete)}>
+            Svara med röst
+          </button>
+        )}
       </main>
     </div>
   );
