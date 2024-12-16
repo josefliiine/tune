@@ -4,6 +4,7 @@ import { getIdToken } from "../../utils/getIdToken";
 import useAuth from "../../hooks/useAuth";
 import Header from "../../components/Header";
 import { toast } from "react-toastify";
+import { motion } from "framer-motion";
 
 interface Statistic {
     gameMode: 'self' | 'random' | 'friend';
@@ -63,22 +64,51 @@ const MyStatisticsPage: React.FC = () => {
 
     if (loading) {
         return (
-            <div>
+            <motion.div
+                className="start-page"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+            >
                 <Header />
-                <p>Loading statistics...</p>
-            </div>
+                <motion.p
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                    Loading statistics...
+                </motion.p>
+            </motion.div>
         );
     }
 
     return (
-        <div className="start-page">
+        <motion.div
+            className="start-page"
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            transition={{ duration: 0.5 }}
+        >
             <Header />
             <main className="main-content">
                 <h1>My Statistics</h1>
                 {statistics.length === 0 ? (
-                    <p>You haven't played any games yet.</p>
+                    <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                        You haven't played any games yet.
+                    </motion.p>
                 ) : (
-                    <table className="statistics-table">
+                    <motion.table
+                        className="statistics-table"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                    >
                         <thead>
                             <tr>
                                 <th>Gametype</th>
@@ -88,17 +118,23 @@ const MyStatisticsPage: React.FC = () => {
                         </thead>
                         <tbody>
                             {statistics.map((stat, index) => (
-                                <tr key={index}>
+                                <motion.tr
+                                    key={index}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                                    whileHover={{ scale: 1.02, backgroundColor: "#fff" }}
+                                >
                                     <td>{mapGameMode(stat.gameMode)}</td>
                                     <td>{stat.correctAnswers}</td>
                                     <td>{new Date(stat.createdAt).toLocaleString()}</td>
-                                </tr>
+                                </motion.tr>
                             ))}
                         </tbody>
-                    </table>
+                    </motion.table>
                 )}
             </main>
-        </div>
+        </motion.div>
     );
 };
 

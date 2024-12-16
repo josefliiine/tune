@@ -656,6 +656,34 @@ button:hover {
   width: 100vw;
 }
 
+/* Table in MyStatistics **/
+.statistics-table {
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.statistics-table th {
+  color: black;
+  padding: 12px;
+  border: 2px solid #FDF5E6;
+  text-align: center;
+}
+
+.statistics-table td {
+  border: 2px solid #FDF5E6;
+  padding: 12px;
+  text-align: center;
+}
+
+// .statistics-table tr:nth-child(even) {
+//   background-color: #913d01;
+//   color: white;
+// }
+
+// .statistics-table tr:hover {
+//   background-color: #913d01;
+// }
+
 /* Bigger screens */
 
 @media (min-width: 768px) {

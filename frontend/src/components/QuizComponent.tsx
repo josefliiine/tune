@@ -231,7 +231,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       const opponentResult = (player1 && player1.id !== userId) ? player1 : player2;
 
       return (
-        <div>
+        <div className="quiz-content">
+        <main className="main-content">
           <h2>Quiz Complete!</h2>
           {myResult && (
             <p>Your score: {myResult.score}</p>
@@ -247,18 +248,21 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
             <p>It's a draw!</p>
           )}
           {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
+          </main>
         </div>
       );
     }
 
     return (
-      <div>
+      <div className="quiz-content">
+      <main className="main-content">
         <h2>Quiz Complete!</h2>
         <p>
           Your score: {score} / {localQuizQuestions.length}
         </p>
         {gameMode !== "self" && opponent && <p>Opponent: {opponent}</p>}
         {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
+        </main>
       </div>
     );
   }
