@@ -64,15 +64,15 @@ const FriendCard: React.FC<FriendCardProps> = ({ friend, onRemove }) => {
   const { games, loading, error } = useFriendGames(friend.friendId);
 
   const getResultStyle = (result: string) => {
-    switch(result) {
-      case 'win':
-        return { color: 'green' };
-      case 'lose':
-        return { color: 'red' };
-      case 'draw':
-        return { color: 'gray' };
-      case 'completed':
-        return { color: 'blue' };
+    switch (result) {
+      case "win":
+        return { color: "green" };
+      case "lose":
+        return { color: "red" };
+      case "draw":
+        return { color: "gray" };
+      case "completed":
+        return { color: "blue" };
       default:
         return {};
     }
@@ -106,7 +106,11 @@ const FriendCard: React.FC<FriendCardProps> = ({ friend, onRemove }) => {
           <ul className="games-list">
             {games.map((game) => (
               <li key={game.gameId} className="game-item">
-                <strong>{mapGameMode(game.gameMode)}</strong> - <span style={getResultStyle(game.result)}>{game.result}</span> - {new Date(game.createdAt).toLocaleString()}
+                <strong>{mapGameMode(game.gameMode)}</strong> -{" "}
+                <span style={getResultStyle(game.result)}>
+                  {game.aborted ? "Aborted" : game.result}
+                </span>{" "}
+                - {new Date(game.createdAt).toLocaleString()}
               </li>
             ))}
           </ul>
@@ -117,11 +121,15 @@ const FriendCard: React.FC<FriendCardProps> = ({ friend, onRemove }) => {
 };
 
 const mapGameMode = (mode: string) => {
-  switch(mode) {
-      case 'self': return 'Self';
-      case 'random': return 'Random';
-      case 'friend': return 'Friend';
-      default: return mode;
+  switch (mode) {
+    case "self":
+      return "Self";
+    case "random":
+      return "Random";
+    case "friend":
+      return "Friend";
+    default:
+      return mode;
   }
 };
 

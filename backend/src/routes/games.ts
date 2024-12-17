@@ -247,9 +247,22 @@ router.get('/friends/:friendId/games', authenticate, async (req: Request, res: R
 
     const latestGames = games.map((game: IGame) => {
       let correctAnswers = 0;
+
+      if (game.aborted) {
+        return {
+          gameId: game.gameId,
+          gameMode: game.gameMode,
+          correctAnswers: null,
+          result: 'aborted',
+          createdAt: game.createdAt,
+          aborted: true,
+        };
+      }
+
       if (game.gameMode === 'self') {
         correctAnswers = game.player1Answers.reduce((count, ans, idx) => {
-          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+          const question = game.questions[idx];
+          if (question && ans && ans.trim() === question.correctAnswer.trim()) {
             return count + 1;
           }
           return count;
@@ -258,7 +271,8 @@ router.get('/friends/:friendId/games', authenticate, async (req: Request, res: R
         const isPlayer1 = game.player1 === friendId;
         const userAnswers = isPlayer1 ? game.player1Answers : game.player2Answers;
         correctAnswers = userAnswers.reduce((count, ans, idx) => {
-          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+          const question = game.questions[idx];
+          if (question && ans && ans.trim() === question.correctAnswer.trim()) {
             return count + 1;
           }
           return count;
@@ -268,17 +282,21 @@ router.get('/friends/:friendId/games', authenticate, async (req: Request, res: R
       let result = 'draw';
       if (game.gameMode !== 'self') {
         const player1Score = game.player1Answers.reduce((count, ans, idx) => {
-          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+          const question = game.questions[idx];
+          if (question && ans && ans.trim() === question.correctAnswer.trim()) {
             return count + 1;
           }
           return count;
         }, 0);
+
         const player2Score = game.player2Answers.reduce((count, ans, idx) => {
-          if (ans && ans.trim() === game.questions[idx].correctAnswer.trim()) {
+          const question = game.questions[idx];
+          if (question && ans && ans.trim() === question.correctAnswer.trim()) {
             return count + 1;
           }
           return count;
         }, 0);
+
         if (player1Score > player2Score) {
           result = game.player1 === friendId ? 'win' : 'lose';
         } else if (player2Score > player1Score) {
@@ -294,13 +312,14 @@ router.get('/friends/:friendId/games', authenticate, async (req: Request, res: R
         correctAnswers,
         result,
         createdAt: game.createdAt,
+        aborted: false,
       };
     });
 
     res.json(latestGames);
   } catch (error) {
-    console.error('Error fetching friend\'s games:', error);
-    res.status(500).json({ message: 'Error fetching friend\'s games.' });
+    console.error("Error fetching friend's games:", error);
+    res.status(500).json({ message: "Error fetching friend's games." });
   }
 });
 

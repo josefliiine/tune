@@ -8,6 +8,7 @@ interface GameResult {
     correctAnswers: number | null;
     result: string;
     createdAt: string;
+    aborted: boolean;
 }
 
 const useFriendGames = (friendId: string) => {
