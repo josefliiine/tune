@@ -676,6 +676,84 @@ button:hover {
   text-align: center;
 }
 
+/* CHAT */
+
+.chat-container {
+  width: 300px;
+  background: white;
+  border: 1px solid black;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background: #CC5500;
+  border-bottom: 1px solid black;
+  border-radius: 10px;
+}
+
+.friends-list ul {
+  list-style: none;
+  padding: 10px;
+}
+
+.friends-list li {
+  cursor: pointer;
+  margin-bottom: 5px;
+  color: black;
+}
+
+.friends-list li:hover {
+  text-decoration: underline;
+}
+
+.chat-box {
+  padding: 10px;
+}
+
+.messages {
+  height: 150px;
+  overflow-y: auto;
+  border: 1px solid #CC5500;
+  margin-bottom: 10px;
+  padding: 5px;
+  background: #FDF5E6;
+}
+
+input[type="text"] {
+  width: calc(100% - 50px);
+  padding: 5px;
+  margin-right: 5px;
+  border: 1px solid #CC5500;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+
+.chat-toggle {
+  padding: 10px;
+  border: none;
+  border-radius: 100%;
+  border: 2px solid black;
+  background: #FDF5E6;
+  color: black;
+  font-size: 22px;
+  cursor: pointer;
+  height: 60px;
+  width: 60px;
+}
+
+.chat-toggle:hover {
+  background: #E5D8C5;
+  color: black;
+}
+
+h4 {
+  padding: 10px;
+}
+
 // .statistics-table tr:nth-child(even) {
 //   background-color: #913d01;
 //   color: white;
