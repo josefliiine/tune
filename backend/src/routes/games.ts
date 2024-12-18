@@ -1,11 +1,18 @@
 import express, { Request, Response } from 'express';
 import Game, { IGame } from '../models/Game';
-import { authenticate } from '../middleware/auth';
+import { authenticate, RequestWithUser } from '../middleware/auth';
 import Question from '../models/Question';
 import { Socket, Server } from 'socket.io';
 import admin from '../firebase';
 
 const router = express.Router();
+
+interface IQuestion {
+  _id: string;
+  question: string;
+  answers: string[];
+  correctAnswer: string;
+}
 
 export const handleGameEvents = (socket: Socket, io: Server) => {
   async function sendGameResults(game: IGame, io: Server, gameId: string) {
@@ -16,7 +23,8 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
       const player1Name = player1Data?.displayName || player1Data?.email || 'Unknown';
 
       const player1Score = game.player1Answers.reduce((count, ans, i) => {
-        if (ans && ans.trim() === game.questions[i].correctAnswer.trim()) {
+        const question = game.questions[i];
+        if (ans && ans.trim() === question.correctAnswer.trim()) {
           return count + 1;
         }
         return count;
@@ -39,14 +47,16 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
       const player2Name = player2Data?.displayName || player2Data?.email || 'Unknown';
 
       const player1Score = game.player1Answers.reduce((count, ans, i) => {
-        if (ans && ans.trim() === game.questions[i].correctAnswer.trim()) {
+        const question = game.questions[i];
+        if (ans && ans.trim() === question.correctAnswer.trim()) {
           return count + 1;
         }
         return count;
       }, 0);
 
       const player2Score = game.player2Answers.reduce((count, ans, i) => {
-        if (ans && ans.trim() === game.questions[i].correctAnswer.trim()) {
+        const question = game.questions[i];
+        if (ans && ans.trim() === question.correctAnswer.trim()) {
           return count + 1;
         }
         return count;
@@ -67,7 +77,7 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
     }
   }
 
-  socket.on("joinGame", async ({ gameId, userId }) => {
+  socket.on("joinGame", async ({ gameId, userId }: { gameId: string, userId: string }) => {
     socket.join(gameId);
     console.log(`User ${userId} joined game ${gameId}`);
 
@@ -86,7 +96,7 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
     }
   });
 
-  socket.on("submitAnswer", async ({ gameId, userId, answer }) => {
+  socket.on("submitAnswer", async ({ gameId, userId, answer }: { gameId: string, userId: string, answer: string }) => {
     try {
       const game = await Game.findOne({ gameId }) as IGame;
       if (!game) {
@@ -158,15 +168,17 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
           }
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error recording answer:", error);
-      socket.emit("error", { message: "Error recording answer." });
+      if (error instanceof Error) {
+        socket.emit("error", { message: "Error recording answer." });
+      }
     }
   });
 
   socket.on("disconnect", async () => {
     console.log(`User disconnected: ${socket.id}`);
-    const userId = socket.data.userId;
+    const userId = socket.data.userId as string | undefined;
     if (!userId) return;
 
     const game = await Game.findOne({ $or: [{ player1: userId }, { player2: userId }] });
@@ -177,24 +189,37 @@ export const handleGameEvents = (socket: Socket, io: Server) => {
       io.to(game.gameId).emit("gameAborted", { message: "A player has disconnected. Game aborted." });
     }
   });
-};
+}
 
 router.post('/', authenticate, async (req: Request, res: Response) => {
-  try {
-    const { userId, difficulty, gameMode } = req.body;
+  const reqWithUser = req as RequestWithUser;
+  const { difficulty, gameMode } = req.body;
 
+  try {
     if (gameMode !== 'self') {
       return res.status(400).json({ message: 'Invalid game mode. Only "self" is supported here.' });
     }
 
+    const userId = reqWithUser.user.uid;
+
     const questions = await Question.aggregate([
       { $match: { difficulty } },
-      { $sample: { size: 10 } }
+      { $sample: { size: 10 } },
+      {
+        $project: {
+          questionId: { $toString: '$_id' },
+          question: 1,
+          answers: 1,
+          correctAnswer: 1,
+        }
+      }
     ]);
 
     if (!questions || questions.length === 0) {
       return res.status(400).json({ message: 'No questions found for the specified difficulty.' });
     }
+
+    console.log(`Questions fetched for 'self' game:`, questions);
 
     const gameId = `self-${userId}-${Date.now()}`;
 
@@ -205,8 +230,8 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       gameMode: 'self',
       status: 'started',
       createdAt: new Date(),
-      questions: questions.map((q: any) => ({
-        questionId: q._id.toString(),
+      questions: questions.map((q: IQuestion) => ({
+        questionId: q._id,
         question: q.question,
         answers: q.answers,
         correctAnswer: q.correctAnswer,
@@ -218,19 +243,25 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     });
 
     if (newGame.questions.length !== newGame.questionsCount) {
+      console.error('Mismatch between questions and questionsCount:', newGame.questions.length, newGame.questionsCount);
       return res.status(500).json({ message: 'Mismatch between questions and questionsCount.' });
     }
 
     await newGame.save();
+    console.log(`Self game created: ${gameId}`);
 
     return res.json({
       gameId: newGame.gameId,
       quizQuestions: newGame.questions,
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating self game:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    if (error instanceof Error) {
+      res.status(500).json({ message: 'Internal server error' });
+    } else {
+      res.status(500).json({ message: 'An unexpected error occurred.' });
+    }
   }
 });
 
@@ -283,7 +314,7 @@ router.get('/friends/:friendId/games', authenticate, async (req: Request, res: R
       if (game.gameMode !== 'self') {
         const player1Score = game.player1Answers.reduce((count, ans, idx) => {
           const question = game.questions[idx];
-          if (question && ans && ans.trim() === question.correctAnswer.trim()) {
+          if (question && ans.trim() === question.correctAnswer.trim()) {
             return count + 1;
           }
           return count;
@@ -291,7 +322,7 @@ router.get('/friends/:friendId/games', authenticate, async (req: Request, res: R
 
         const player2Score = game.player2Answers.reduce((count, ans, idx) => {
           const question = game.questions[idx];
-          if (question && ans && ans.trim() === question.correctAnswer.trim()) {
+          if (question && ans.trim() === question.correctAnswer.trim()) {
             return count + 1;
           }
           return count;
@@ -317,9 +348,13 @@ router.get('/friends/:friendId/games', authenticate, async (req: Request, res: R
     });
 
     res.json(latestGames);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching friend's games:", error);
-    res.status(500).json({ message: "Error fetching friend's games." });
+    if (error instanceof Error) {
+      res.status(500).json({ message: "Error fetching friend's games." });
+    } else {
+      res.status(500).json({ message: "An unexpected error occurred." });
+    }
   }
 });
 
@@ -347,7 +382,7 @@ router.get('/latest', authenticate, async (req: Request, res: Response) => {
       const player1Score = game.player1Answers.reduce((count, ans, idx) => {
         const question = game.questions[idx];
         if (!question) {
-          console.warn(`Game ${game.gameId} har ingen fråga vid index ${idx} för player1Answers.`);
+          console.warn(`Game ${game.gameId} has no question with index ${idx} for player1Answers.`);
           return count;
         }
         if (ans && ans.trim() === question.correctAnswer.trim()) {
@@ -356,12 +391,12 @@ router.get('/latest', authenticate, async (req: Request, res: Response) => {
         return count;
       }, 0);
 
-      let player2Score = null;
+      let player2Score: number | null = null;
       if (game.player2) {
         player2Score = game.player2Answers.reduce((count, ans, idx) => {
           const question = game.questions[idx];
           if (!question) {
-            console.warn(`Game ${game.gameId} har ingen fråga vid index ${idx} för player2Answers.`);
+            console.warn(`Game ${game.gameId} has no question with index ${idx} for player2Answers.`);
             return count;
           }
           if (ans && ans.trim() === question.correctAnswer.trim()) {
@@ -373,9 +408,9 @@ router.get('/latest', authenticate, async (req: Request, res: Response) => {
 
       let result = 'draw';
       if (game.gameMode !== 'self') {
-        if (player1Score > player2Score!) {
+        if (player1Score > (player2Score ?? 0)) {
           result = 'win';
-        } else if (player2Score! > player1Score) {
+        } else if ((player2Score ?? 0) > player1Score) {
           result = 'lose';
         }
       } else {
@@ -395,7 +430,7 @@ router.get('/latest', authenticate, async (req: Request, res: Response) => {
         player2: game.player2 ? {
           id: game.player2,
           name: player2Name,
-          score: player2Score,
+          score: player2Score!,
         } : null,
         result,
         isAborted,
@@ -404,9 +439,87 @@ router.get('/latest', authenticate, async (req: Request, res: Response) => {
     }));
 
     res.json(gamesWithUserNames);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching latest games:', error);
-    res.status(500).json({ message: 'Error fetching latest games.' });
+    if (error instanceof Error) {
+      res.status(500).json({ message: 'Error fetching latest games.' });
+    } else {
+      res.status(500).json({ message: 'An unexpected error occurred.' });
+    }
+  }
+});
+
+router.post('/', authenticate, async (req: Request, res: Response) => {
+  const reqWithUser = req as RequestWithUser;
+  const { difficulty, gameMode } = req.body;
+
+  try {
+    if (gameMode !== 'self') {
+      return res.status(400).json({ message: 'Invalid game mode. Only "self" is supported here.' });
+    }
+
+    const userId = reqWithUser.user.uid;
+
+    const questions = await Question.aggregate([
+      { $match: { difficulty } },
+      { $sample: { size: 10 } },
+      {
+        $project: {
+          questionId: { $toString: '$_id' },
+          question: 1,
+          answers: 1,
+          correctAnswer: 1,
+        }
+      }
+    ]);
+
+    if (!questions || questions.length === 0) {
+      return res.status(400).json({ message: 'No questions found for the specified difficulty.' });
+    }
+
+    console.log(`Questions fetched for 'self' game:`, questions);
+
+    const gameId = `self-${userId}-${Date.now()}`;
+
+    const newGame = new Game({
+      gameId,
+      player1: userId,
+      player2: null,
+      gameMode: 'self',
+      status: 'started',
+      createdAt: new Date(),
+      questions: questions.map((q: IQuestion) => ({
+        questionId: q._id,
+        question: q.question,
+        answers: q.answers,
+        correctAnswer: q.correctAnswer,
+      })),
+      questionsCount: questions.length,
+      player1Answers: [],
+      player2Answers: [],
+      aborted: false,
+    });
+
+    if (newGame.questions.length !== newGame.questionsCount) {
+      console.error('Mismatch between questions and questionsCount:', newGame.questions.length, newGame.questionsCount);
+      return res.status(500).json({ message: 'Mismatch between questions and questionsCount.' });
+    }
+
+    await newGame.save();
+    console.log(`Self game created: ${gameId}`);
+
+    return res.json({
+      gameId: newGame.gameId,
+      quizQuestions: newGame.questions,
+    });
+
+  } catch (error: unknown) {
+    console.error('Error creating self game:', error);
+    if (error instanceof Error) {
+      res.status(500).json({ message: 'Internal server error' });
+    } else {
+      res.status(500).json({ message: 'An unexpected error occurred.' });
+    }
   }
 });
 

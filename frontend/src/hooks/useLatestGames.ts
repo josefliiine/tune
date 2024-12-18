@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../api/axiosConfig";
 import { getIdToken } from "../utils/getIdToken";
+import axios from "axios";
 
 interface Player {
   id: string;
@@ -32,9 +33,13 @@ const useLatestGames = () => {
         });
         setLatestGames(response.data);
         setLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching latest games:", err);
-        setError("Couldn't fetch latest games.");
+        if (axios.isAxiosError(err)) {
+          setError("Couldn't fetch latest games.");
+        } else {
+          setError("An unexpected error occurred.");
+        }
         setLoading(false);
       }
     };

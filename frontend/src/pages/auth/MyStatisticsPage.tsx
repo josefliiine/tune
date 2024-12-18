@@ -5,6 +5,7 @@ import useAuth from "../../hooks/useAuth";
 import Header from "../../components/Header";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
+import axios, { AxiosError } from "axios";
 
 interface Statistic {
     gameMode: 'self' | 'random' | 'friend';
@@ -27,33 +28,34 @@ const MyStatisticsPage: React.FC = () => {
 
             try {
                 const token = await getIdToken();
-                const response = await api.get('/users/statistics', {
+                const response = await api.get<Statistic[]>('/users/statistics', {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
                 });
-                const filteredData: Statistic[] = response.data.map((stat: any) => ({
-                    gameMode: stat.gameMode,
-                    correctAnswers: stat.correctAnswers,
-                    createdAt: stat.createdAt,
-                }));
-                setStatistics(filteredData);
+                setStatistics(response.data);
                 setLoading(false);
-            } catch (err: any) {
-                console.error("Error fetching statistics:", err);
-                if (err.response && err.response.status === 404) {
-                    toast.error("Could not find statistics.");
+            } catch (err: unknown) {
+                setLoading(false);
+                if (axios.isAxiosError(err)) {
+                    const axiosError = err as AxiosError;
+                    console.error("Error fetching statistics:", axiosError);
+                    if (axiosError.response && axiosError.response.status === 404) {
+                        toast.error("Could not find statistics.");
+                    } else {
+                        toast.error("Failed to load statistics.");
+                    }
                 } else {
-                    toast.error("Failed to load statistics.");
+                    console.error("Unexpected error:", err);
+                    toast.error("An unexpected error occurred.");
                 }
-                setLoading(false);
             }
         };
 
         fetchStatistics();
     }, [userId]);
 
-    const mapGameMode = (mode: string) => {
+    const mapGameMode = (mode: string): string => {
         switch(mode) {
             case 'self': return 'Self';
             case 'random': return 'Random';

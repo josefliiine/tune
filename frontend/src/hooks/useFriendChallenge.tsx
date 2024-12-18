@@ -21,6 +21,17 @@ interface UseFriendChallengeReturn {
   error: string | null;
 }
 
+interface StartGameData {
+  gameId: string;
+  quizQuestions: Question[];
+  opponentId: string;
+  gameMode: "friend";
+}
+
+interface ErrorData {
+  message: string;
+}
+
 const useFriendChallenge = (challengerId: string): UseFriendChallengeReturn => {
   const [challengeStatus, setChallengeStatus] = useState<'pending' | 'accepted' | 'declined' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +48,17 @@ const useFriendChallenge = (challengerId: string): UseFriendChallengeReturn => {
       }
     };
 
-    const handleStartGame = (data: GameData) => {
-      setGameData(data);
+    const handleStartGame = (data: StartGameData) => {
+      setGameData({
+        gameId: data.gameId,
+        quizQuestions: data.quizQuestions,
+        opponent: data.opponentId,
+        gameMode: data.gameMode,
+      });
       setChallengeStatus('accepted');
     };
 
-    const handleError = (data: any) => {
+    const handleError = (data: ErrorData) => {
       console.error("Friend challenge error:", data.message);
       setError(data.message);
       setChallengeStatus(null);

@@ -16,7 +16,7 @@ router.get("/", (req, res) => {
 
 router.use('/questions', questionsRouter);
 router.use('/match', matchPlayersRouter);
-router.use('/protected', someProtectedRoute);
+router.use('/', someProtectedRoute);
 router.use('/games', gamesRouter);
 router.use('/friends', friendsRouter);
 router.use('/users', usersRouter);

@@ -8,6 +8,10 @@ interface MatchFoundData {
   opponent: string;
 }
 
+interface MatchmakingErrorData {
+  message: string;
+}
+
 const useMatchmaking = (
   userId: string | null,
   difficulty: string | null,
@@ -46,7 +50,7 @@ const useMatchmaking = (
       setLoading(false);
     };
 
-    const onError = (data: any) => {
+    const onError = (data: MatchmakingErrorData) => {
       console.error("Matchmaking error:", data.message);
       setLoading(false);
       setStatus(null);

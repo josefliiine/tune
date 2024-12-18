@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import admin from '../firebase';
+import { RequestWithUser } from '../middleware/auth';
 
 interface Friend {
   friendId: string;
@@ -8,7 +9,8 @@ interface Friend {
 }
 
 export const getMyFriends = async (req: Request, res: Response) => {
-  const userId = (req as any).user.uid;
+  const reqWithUser = req as RequestWithUser;
+  const userId = reqWithUser.user.uid;
   const db = admin.firestore();
 
   try {
@@ -32,14 +34,19 @@ export const getMyFriends = async (req: Request, res: Response) => {
 
     console.log(`User ${userId} has friends:`, friends);
     res.json(friends);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching friends:', error);
-    res.status(500).json({ message: 'Error fetching friends.' });
+    if (error instanceof Error) {
+      res.status(500).json({ message: 'Error fetching friends.' });
+    } else {
+      res.status(500).json({ message: 'An unexpected error occurred.' });
+    }
   }
 };
 
 export const removeFriend = async (req: Request, res: Response) => {
-  const userId = (req as any).user.uid;
+  const reqWithUser = req as RequestWithUser;
+  const userId = reqWithUser.user.uid;
   const { friendId } = req.params;
 
   if (!friendId) {
@@ -66,8 +73,12 @@ export const removeFriend = async (req: Request, res: Response) => {
 
     console.log(`Friendship between ${userId} and ${friendId} has been removed.`);
     res.json({ message: 'Friend removed successfully.' });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error removing friend:', error);
-    res.status(500).json({ message: 'Error removing friend.' });
+    if (error instanceof Error) {
+      res.status(500).json({ message: 'Error removing friend.' });
+    } else {
+      res.status(500).json({ message: 'An unexpected error occurred.' });
+    }
   }
 };

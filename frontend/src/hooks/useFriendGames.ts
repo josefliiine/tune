@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../api/axiosConfig";
 import { getIdToken } from "../utils/getIdToken";
+import axios from "axios";
 
 interface GameResult {
     gameId: string;
@@ -27,9 +28,13 @@ const useFriendGames = (friendId: string) => {
                 });
                 setGames(response.data);
                 setLoading(false);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error("Error fetching friend's games:", err);
-                setError("Failed to fetch friend's game result.");
+                if (axios.isAxiosError(err)) {
+                    setError("Failed to fetch friend's game result.");
+                } else {
+                    setError("An unexpected error occurred.");
+                }
                 setLoading(false);
             }
         };

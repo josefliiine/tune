@@ -21,9 +21,13 @@ router.get("/:userId", async (req: Request, res: Response) => {
       displayName: userData?.displayName,
       email: userData?.email,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching user data:", error);
-    res.status(500).json({ message: "Error fetching user data." });
+    if (error instanceof Error) {
+      res.status(500).json({ message: "Error fetching user data." });
+    } else {
+      res.status(500).json({ message: "An unexpected error occurred." });
+    }
   }
 });
 

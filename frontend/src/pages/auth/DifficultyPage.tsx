@@ -18,6 +18,13 @@ interface LocationState {
   gameMode: "self" | "random" | "friend";
 }
 
+interface StartGameData {
+  gameId: string;
+  quizQuestions: Question[];
+  opponentId: string;
+  gameMode: "self" | "random" | "friend";
+}
+
 const DifficultyPage: React.FC = () => {
   const { userId } = useAuth();
   const location = useLocation();
@@ -55,7 +62,8 @@ const DifficultyPage: React.FC = () => {
 
     if (mode === "self") {
       try {
-        const response = await api.post(
+        const token = await getIdToken();
+        const response = await api.post<{ gameId: string; quizQuestions: Question[] }>(
           "/games",
           {
             gameMode: "self",
@@ -64,7 +72,7 @@ const DifficultyPage: React.FC = () => {
           },
           {
             headers: {
-              Authorization: `Bearer ${await getIdToken()}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -72,13 +80,13 @@ const DifficultyPage: React.FC = () => {
         setGameId(response.data.gameId);
         setQuizQuestions(response.data.quizQuestions);
         setIsGameReady(true);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error creating self game:", error);
       }
     } else if (mode === "random") {
       try {
         // Fix thisss
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error in random matchmaking:", error);
       }
     } else if (mode === "friend") {
@@ -92,18 +100,18 @@ const DifficultyPage: React.FC = () => {
     socket.emit("authenticate", { userId });
     console.log("Authenticate emitted from DifficultyPage");
 
-    const handleGameAborted = (data: any) => {
+    const handleGameAborted = (data: { message: string }) => {
       console.log("Game aborted:", data);
       setAbortMessage(data.message);
       setIsGameReady(false);
     };
 
-    const handleError = (data: any) => {
+    const handleError = (data: { message: string }) => {
       console.error("Matchmaking error:", data.message);
       setMatchError(data.message);
     };
 
-    const handleStartGame = (data: any) => {
+    const handleStartGame = (data: StartGameData) => {
       console.log("Start game received in DifficultyPage:", data);
       const { gameId, quizQuestions, opponentId, gameMode } = data;
       setGameId(gameId);

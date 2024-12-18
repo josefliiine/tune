@@ -11,6 +11,34 @@ interface QuizComponentProps {
   initialQuizQuestions: Question[];
 }
 
+interface GameStartData {
+  quizQuestions: Question[];
+}
+
+interface NextQuestionData {
+  currentQuestionIndex: number;
+  question: Question;
+}
+
+interface PlayerAnsweredData {
+  userId: string;
+  isCorrect: boolean;
+}
+
+interface GameResults {
+  player1?: { id: string; name: string; score: number };
+  player2?: { id: string; name: string; score: number };
+  winner?: string;
+}
+
+interface GameAbortedData {
+  message: string;
+}
+
+interface WaitingForOpponentData {
+  message: string;
+}
+
 const QuizComponent: React.FC<QuizComponentProps> = ({
   gameId,
   userId,
@@ -39,17 +67,18 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  const nextQuestionDataRef = useRef<any>(null);
+  const nextQuestionDataRef = useRef<NextQuestionData | null>(null);
   const nextQuestionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+    const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognitionConstructor) {
       console.warn("Web Speech API is not supported in this browser.");
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognitionConstructor();
     recognition.lang = 'sv-SE';
     recognition.interimResults = false;
     recognition.continuous = true;
@@ -80,17 +109,21 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     };
 
     setRecognitionInstance(recognition);
+
+    return () => {
+      recognition.abort();
+    };
   }, []);
 
   useEffect(() => {
-    const handleStartGame = (data: any) => {
+    const handleStartGame = (data: GameStartData) => {
       setCurrentQuestionIndex(0);
       setLocalQuizQuestions(data.quizQuestions);
       setIsQuizComplete(false);
       setScore(0);
     };
 
-    const handleNextQuestion = (data: any) => {
+    const handleNextQuestion = (data: NextQuestionData) => {
       setIsTransitioning(true);
       nextQuestionDataRef.current = data;
 
@@ -100,21 +133,23 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
       nextQuestionTimeoutRef.current = setTimeout(() => {
         const qData = nextQuestionDataRef.current;
-        setCurrentQuestionIndex(qData.currentQuestionIndex);
-        setLocalQuizQuestions((prevQuestions) => {
-          const newQuestions = [...prevQuestions];
-          newQuestions[qData.currentQuestionIndex] = qData.question;
-          return newQuestions;
-        });
-        setIsCorrect(null);
-        setSelectedAnswer(null);
-        setWaitingMessage(null);
-        nextQuestionDataRef.current = null;
-        setIsTransitioning(false);
+        if (qData) {
+          setCurrentQuestionIndex(qData.currentQuestionIndex);
+          setLocalQuizQuestions((prevQuestions) => {
+            const newQuestions = [...prevQuestions];
+            newQuestions[qData.currentQuestionIndex] = qData.question;
+            return newQuestions;
+          });
+          setIsCorrect(null);
+          setSelectedAnswer(null);
+          setWaitingMessage(null);
+          nextQuestionDataRef.current = null;
+          setIsTransitioning(false);
+        }
       }, 2000);
     };
 
-    const handlePlayerAnswered = (data: any) => {
+    const handlePlayerAnswered = (data: PlayerAnsweredData) => {
       if (data.userId === userId) {
         setIsCorrect(data.isCorrect);
         if (data.isCorrect) {
@@ -127,20 +162,20 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       setIsQuizComplete(true);
     };
 
-    const handleGameAborted = (data: any) => {
+    const handleGameAborted = (data: GameAbortedData) => {
       setAbortMessage(data.message);
       setIsQuizComplete(true);
     };
 
-    const handleWaitingForOpponent = (data: { message: string }) => {
+    const handleWaitingForOpponent = (data: WaitingForOpponentData) => {
       setWaitingMessage(data.message);
     };
 
-    const handleError = (data: any) => {
+    const handleError = (data: { message: string }) => {
       console.error("Error:", data.message);
     };
 
-    const handleGameResults = (data: any) => {
+    const handleGameResults = (data: GameResults) => {
       setFinalResults(data);
     };
 
@@ -181,7 +216,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
           if (prevTimer > 0 && !selectedAnswer && !isQuizComplete) {
             return prevTimer - 1;
           } else if (prevTimer === 0 && !selectedAnswer && !isQuizComplete) {
-            clearInterval(interval!);
+            if (interval) clearInterval(interval);
             setTimeout(() => {
               handleAnswerSelect('');
             }, 1000);
@@ -220,7 +255,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       socket.emit("submitAnswer", { gameId, userId, answer: matchedAnswer });
       setSelectedAnswer(matchedAnswer);
     } else {
-      console.log("No options matches your answer.");
+      console.log("No options match your answer.");
     }
   };
 
@@ -232,22 +267,22 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
       return (
         <div className="quiz-content">
-        <main className="main-content">
-          <h2>Quiz Complete!</h2>
-          {myResult && (
-            <p>Your score: {myResult.score}</p>
-          )}
-          {opponentResult && (
-            <p>
-              Opponent: {opponentResult.name} - Score: {opponentResult.score}
-            </p>
-          )}
-          {winner && winner !== 'draw' ? (
-            <p>Winner: {winner}</p>
-          ) : (
-            <p>It's a draw!</p>
-          )}
-          {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
+          <main className="main-content">
+            <h2>Quiz Complete!</h2>
+            {myResult && (
+              <p>Your score: {myResult.score}</p>
+            )}
+            {opponentResult && (
+              <p>
+                Opponent: {opponentResult.name} - Score: {opponentResult.score}
+              </p>
+            )}
+            {winner && winner !== 'draw' ? (
+              <p>Winner: {winner}</p>
+            ) : (
+              <p>It's a draw!</p>
+            )}
+            {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
           </main>
         </div>
       );
@@ -255,13 +290,13 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
     return (
       <div className="quiz-content">
-      <main className="main-content">
-        <h2>Quiz Complete!</h2>
-        <p>
-          Your score: {score} / {localQuizQuestions.length}
-        </p>
-        {gameMode !== "self" && opponent && <p>Opponent: {opponent}</p>}
-        {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
+        <main className="main-content">
+          <h2>Quiz Complete!</h2>
+          <p>
+            Your score: {score} / {localQuizQuestions.length}
+          </p>
+          {gameMode !== "self" && opponent && <p>Opponent: {opponent}</p>}
+          {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
         </main>
       </div>
     );
@@ -326,7 +361,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
         {recognitionInstance && (
           <button onClick={() => recognitionInstance.start()} disabled={Boolean(selectedAnswer || isQuizComplete)}>
-            Svara med röst
+            Answer with voice
           </button>
         )}
       </main>

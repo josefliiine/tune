@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import http from 'http';
 import { Server, Socket } from 'socket.io';
-import Game, { IGame } from './models/Game';
+import Game from './models/Game';
 import WaitingList from './models/WaitingList';
 import Challenge from './models/Challenge';
 import Question from './models/Question';
@@ -50,21 +50,26 @@ const io = new Server(server, {
   }
 });
 
+interface CustomSocket extends Socket {
+  userId?: string;
+  isAuthenticated?: boolean;
+}
+
 const userIdToSocketId = new Map<string, string>();
 
-io.on('connection', (socket: Socket) => {
+io.on('connection', (socket: CustomSocket) => {
   console.log(`User connected: ${socket.id}`);
 
-  socket.on('authenticate', async ({ userId }) => {
+  socket.on('authenticate', async ({ userId }: { userId: string }) => {
     if (userId) {
-      if ((socket as any).isAuthenticated) {
+      if (socket.isAuthenticated) {
         console.log(`Socket ${socket.id} redan autentiserad som ${userId}`);
         return;
       }
       userIdToSocketId.set(userId, socket.id);
       console.log(`User authenticated: ${userId} with socket ID: ${socket.id}`);
-      (socket as any).userId = userId;
-      (socket as any).isAuthenticated = true;
+      socket.userId = userId;
+      socket.isAuthenticated = true;
   
       try {
         const pendingChallenges = await Challenge.find({ challengedId: userId, status: 'pending' });
@@ -76,7 +81,7 @@ io.on('connection', (socket: Socket) => {
           });
           console.log(`Emitted pending challenge to user ${userId}: ${challenge._id}`);
         });
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching pending challenges:', error);
       }
     } else {
@@ -87,7 +92,7 @@ io.on('connection', (socket: Socket) => {
   handleMatchmaking(socket, io, userIdToSocketId);
   handleGameEvents(socket, io);
 
-  socket.on('challengeFriend', async ({ challengerId, challengedId, difficulty }) => {
+  socket.on('challengeFriend', async ({ challengerId, challengedId, difficulty }: { challengerId: string, challengedId: string, difficulty: string }) => {
     try {
       console.log(`Received challengeFriend event: challengerId=${challengerId}, challengedId=${challengedId}, difficulty=${difficulty}`);
 
@@ -105,13 +110,15 @@ io.on('connection', (socket: Socket) => {
       } else {
         console.warn(`Challenged user ${challengedId} is not connected.`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error sending challenge:', error);
-      socket.emit('error', { message: 'Error sending challenge.' });
+      if (error instanceof Error) {
+        socket.emit('error', { message: 'Error sending challenge.' });
+      }
     }
   });
 
-  socket.on('respondToChallenge', async ({ challengeId, response }) => {
+  socket.on('respondToChallenge', async ({ challengeId, response }: { challengeId: string, response: 'accept' | 'decline' }) => {
     console.log(`Received respondToChallenge: challengeId=${challengeId}, response=${response}`);
     try {
       const challenge = await Challenge.findById(challengeId);
@@ -196,14 +203,16 @@ io.on('connection', (socket: Socket) => {
           }
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error responding to challenge:', error);
-      socket.emit('error', { message: 'Error responding to challenge.' });
+      if (error instanceof Error) {
+        socket.emit('error', { message: 'Error responding to challenge.' });
+      }
     }
   });
 
   socket.on('disconnect', async () => {
-    const userId = (socket as any).userId;
+    const userId = socket.userId;
     console.log(`User disconnected: ${socket.id}, userId: ${userId}`);
 
     if (userId) {
@@ -238,7 +247,7 @@ io.on('connection', (socket: Socket) => {
             }
           }
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(`Error handling disconnect for user ${userId}:`, error);
       }
     }

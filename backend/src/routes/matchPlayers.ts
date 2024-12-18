@@ -1,13 +1,25 @@
 import express from 'express';
 import WaitingList from '../models/WaitingList';
-import Game, { IGame } from '../models/Game';
+import Game from '../models/Game';
 import Question from '../models/Question';
 import { Socket, Server } from 'socket.io';
+
+interface IQuestion {
+  _id: string;
+  question: string;
+  answers: string[];
+  correctAnswer: string;
+}
+
+interface JoinMatchmakingData {
+  userId: string;
+  difficulty: string;
+}
 
 const router = express.Router();
 
 export const handleMatchmaking = (socket: Socket, io: Server, userIdToSocketId: Map<string, string>) => {
-  socket.on("joinMatchmaking", async ({ userId, difficulty }) => {
+  socket.on("joinMatchmaking", async ({ userId, difficulty }: JoinMatchmakingData) => {
     try {
       console.log(`User ${userId} is trying to join matchmaking with difficulty ${difficulty}`);
 
@@ -51,7 +63,15 @@ export const handleMatchmaking = (socket: Socket, io: Server, userIdToSocketId: 
           // Fetch questions
           const questions = await Question.aggregate([
             { $match: { difficulty } },
-            { $sample: { size: 10 } }
+            { $sample: { size: 10 } },
+            {
+              $project: {
+                questionId: { $toString: '$_id' },
+                question: 1,
+                answers: 1,
+                correctAnswer: 1,
+              }
+            }
           ]);
           console.log(`Fetched ${questions.length} questions for the game`);
 
@@ -67,7 +87,7 @@ export const handleMatchmaking = (socket: Socket, io: Server, userIdToSocketId: 
             player1Answered: false,
             player2Answered: false,
             currentQuestionIndex: 0,
-            questions: questions.map(q => ({
+            questions: questions.map((q: IQuestion) => ({
               questionId: q._id,
               question: q.question,
               answers: q.answers,
@@ -128,9 +148,11 @@ export const handleMatchmaking = (socket: Socket, io: Server, userIdToSocketId: 
         socket.emit("waitingForMatch");
       }
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error during matchmaking:', error);
-      socket.emit("error", { message: 'Internal server error during matchmaking.' });
+      if (error instanceof Error) {
+        socket.emit("error", { message: 'Internal server error during matchmaking.' });
+      }
     }
   });
 };
