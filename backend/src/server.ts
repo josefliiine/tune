@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import http from 'http';
 import { Server, Socket } from 'socket.io';
-import Game from './models/Game';
+import Game, { IGame } from './models/Game';
 import WaitingList from './models/WaitingList';
 import Challenge from './models/Challenge';
 import Question from './models/Question';
@@ -63,14 +63,14 @@ io.on('connection', (socket: CustomSocket) => {
   socket.on('authenticate', async ({ userId }: { userId: string }) => {
     if (userId) {
       if (socket.isAuthenticated) {
-        console.log(`Socket ${socket.id} redan autentiserad som ${userId}`);
+        console.log(`Socket ${socket.id} already authenticated as ${userId}`);
         return;
       }
       userIdToSocketId.set(userId, socket.id);
       console.log(`User authenticated: ${userId} with socket ID: ${socket.id}`);
       socket.userId = userId;
       socket.isAuthenticated = true;
-  
+
       try {
         const pendingChallenges = await Challenge.find({ challengedId: userId, status: 'pending' });
         pendingChallenges.forEach(challenge => {
@@ -90,7 +90,7 @@ io.on('connection', (socket: CustomSocket) => {
   });
 
   handleMatchmaking(socket, io, userIdToSocketId);
-  handleGameEvents(socket, io);
+  handleGameEvents(socket, io, userIdToSocketId);
 
   socket.on('challengeFriend', async ({ challengerId, challengedId, difficulty }: { challengerId: string, challengedId: string, difficulty: string }) => {
     try {
@@ -151,7 +151,15 @@ io.on('connection', (socket: CustomSocket) => {
       if (response === 'accept') {
         const questions = await Question.aggregate([
           { $match: { difficulty: challenge.difficulty } },
-          { $sample: { size: 10 } }
+          { $sample: { size: 10 } },
+          {
+            $project: {
+              questionId: { $toString: '$_id' },
+              question: 1,
+              answers: 1,
+              correctAnswer: 1,
+            }
+          }
         ]);
         console.log(`Fetched ${questions.length} questions for the game with difficulty ${challenge.difficulty}`);
 
@@ -163,8 +171,8 @@ io.on('connection', (socket: CustomSocket) => {
           gameMode: 'friend',
           status: 'started',
           createdAt: new Date(),
-          questions: questions.map(q => ({
-            questionId: q._id.toString(),
+          questions: questions.map((q: any) => ({
+            questionId: q.questionId,
             question: q.question,
             answers: q.answers,
             correctAnswer: q.correctAnswer,
@@ -172,6 +180,7 @@ io.on('connection', (socket: CustomSocket) => {
           questionsCount: 10,
           player1Answers: [],
           player2Answers: [],
+          aborted: false,
         });
         await newGame.save();
         console.log(`New game created with gameId: ${gameId}`);
@@ -214,36 +223,40 @@ io.on('connection', (socket: CustomSocket) => {
   socket.on('disconnect', async () => {
     const userId = socket.userId;
     console.log(`User disconnected: ${socket.id}, userId: ${userId}`);
-
+  
     if (userId) {
       userIdToSocketId.delete(userId);
       console.log(`User ${userId} removed from userIdToSocketId mapping.`);
-
+  
       try {
         await WaitingList.deleteOne({ userId });
         console.log(`User ${userId} removed from waiting list.`);
-
+  
         const activeGames = await Game.find({
           $or: [{ player1: userId }, { player2: userId }],
-          status: { $ne: 'finished' },
+          status: { $nin: ['finished', 'aborted'] },
         });
-
+  
+        console.log(`Found ${activeGames.length} active game(s) for user ${userId}.`);
+  
         for (const game of activeGames) {
           game.status = 'aborted';
+          game.aborted = true;
           await game.save();
           console.log(`Game ${game.gameId} aborted due to user ${userId} disconnecting.`);
-
+  
           const opponentId = game.player1 === userId ? game.player2 : game.player1;
-
+  
           if (opponentId) {
             const opponentSocketId = userIdToSocketId.get(opponentId);
             if (opponentSocketId) {
-              console.log(`Emitting 'gameAborted' to opponent's socket ID: ${opponentSocketId}`);
+              console.log(`Emitting 'gameAborted' to opponent ${opponentId} (socket ID: ${opponentSocketId})`);
               io.to(opponentSocketId).emit('gameAborted', {
-                message: 'Your opponent has left the game.',
+                message: 'Din motståndare har lämnat spelet.',
               });
+              console.log(`'gameAborted' skickat till ${opponentId} (socket ID: ${opponentSocketId})`);
             } else {
-              console.warn(`Opponent's socket ID not found for user ${opponentId}`);
+              console.warn(`Opponent's socket ID not found for user ${opponentId}. They might be offline.`);
             }
           }
         }

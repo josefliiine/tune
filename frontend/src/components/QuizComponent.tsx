@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import socket from "../socket";
 import { Question } from "../types/Questions";
+import { useNavigate } from "react-router-dom";
 
 interface QuizComponentProps {
   gameId: string;
@@ -46,6 +47,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   gameMode,
   initialQuizQuestions,
 }) => {
+  const navigate = useNavigate();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [score, setScore] = useState<number>(0);
@@ -163,8 +165,11 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     };
 
     const handleGameAborted = (data: GameAbortedData) => {
+      console.log("Received 'gameAborted' event with data:", data);
       setAbortMessage(data.message);
       setIsQuizComplete(true);
+      navigate('/start-page');
+      alert(data.message);
     };
 
     const handleWaitingForOpponent = (data: WaitingForOpponentData) => {
