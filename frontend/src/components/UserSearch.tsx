@@ -46,25 +46,28 @@ const UserSearch = () => {
   };
 
   return (
-    <div>
-      <form onSubmit={handleSearch}>
+    <div className="friend-card">
+      <form onSubmit={handleSearch} className="user-search-form">
         <input
           type="text"
           placeholder="Search by email or username"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          className="search-input"
         />
-        <button type="submit" disabled={loading}>
+        <button type="submit" className="search-button" disabled={loading}>
           {loading ? "Searching for user..." : "Search"}
         </button>
       </form>
 
-      {error && <div>{error}</div>}
+      {error && <div className="error-message">{error}</div>}
 
-      <ul>
+      <ul className="search-results">
         {searchResults.map((user) => (
-          <li key={user.id}>
-            {user.displayName ?? "Unknown"} - {user.email}
+          <li key={user.id} className="result-item">
+            <span>
+              <strong>{user.displayName ?? "Unknown"}</strong> - {user.email}
+            </span>
             <button
               onClick={() => addFriend(user.id, user.displayName ?? "Unknown")}
               disabled={friendRequests.some((req) => req.friendId === user.id)}
@@ -78,7 +81,7 @@ const UserSearch = () => {
       </ul>
 
       {friendRequests.length > 0 && (
-        <div>
+        <div className="friend-requests">
           <h3>Friend Requests Sent</h3>
           <ul>
             {friendRequests.map((request) => (

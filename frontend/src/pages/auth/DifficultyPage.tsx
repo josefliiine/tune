@@ -173,22 +173,22 @@ const DifficultyPage: React.FC = () => {
           <>
             <h1>Choose Difficulty</h1>
             <div className="difficulty-buttons">
-              <button onClick={() => handleDifficultySelect("Easy")}>Easy</button>
-              <button onClick={() => handleDifficultySelect("Intermediate")}>Intermediate</button>
-              <button onClick={() => handleDifficultySelect("Hard")}>Hard</button>
+              <button onClick={() => handleDifficultySelect("Easy")} className="options-button">Easy</button>
+              <button onClick={() => handleDifficultySelect("Intermediate")} className="options-button">Intermediate</button>
+              <button onClick={() => handleDifficultySelect("Hard")} className="options-button">Hard</button>
             </div>
           </>
         ) : (
           <>
             <h1>Choose Game Mode</h1>
             <div className="game-mode-buttons">
-              <button onClick={() => handleGameModeChange("self")} disabled={loading}>
+              <button onClick={() => handleGameModeChange("self")} disabled={loading} className="options-button">
                 Play Against Yourself
               </button>
-              <button onClick={() => handleGameModeChange("random")} disabled={loading}>
+              <button onClick={() => handleGameModeChange("random")} disabled={loading} className="options-button">
                 Play Against Random User
               </button>
-              <button onClick={() => handleGameModeChange("friend")} disabled={loading}>
+              <button onClick={() => handleGameModeChange("friend")} disabled={loading} className="options-button">
                 Play Against a Friend
               </button>
             </div>

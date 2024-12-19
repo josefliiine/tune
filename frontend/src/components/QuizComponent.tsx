@@ -333,7 +333,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                 key={index}
                 onClick={() => handleAnswerSelect(answer)}
                 disabled={Boolean(isQuizComplete || selectedAnswer)}
-                initial={{ scale: 1, borderColor: "gray" }}
+                initial={{ scale: 1, borderColor: "black" }}
                 animate={{
                   scale: isSelected ? 1.1 : 1,
                   borderColor: isCorrectAnswer
@@ -348,6 +348,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                   padding: "10px",
                   margin: "5px",
                   backgroundColor: isSelected ? (isCorrectAnswer ? "lightgreen" : "lightcoral") : "white",
+                  color: "black"
                 }}
               >
                 {answer}

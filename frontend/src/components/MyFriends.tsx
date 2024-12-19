@@ -95,7 +95,7 @@ const FriendCard: React.FC<FriendCardProps> = ({ friend, onRemove }) => {
         </div>
       </div>
       <div className="friend-games">
-        <h4>Latest games:</h4>
+        <h3>Latest games:</h3>
         {loading ? (
           <p>Loading games...</p>
         ) : error ? (

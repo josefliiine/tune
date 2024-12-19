@@ -13,8 +13,12 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  background: linear-gradient(to top right, #CC5500 80%, #FDF5E6 80%);
+  min-height: 100vh;
+  background: linear-gradient(to top right, #CC5500 80%, #FDF5E6 20%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: 100% 100vh;
+  background-color: #CC5500;
 }
 
 .container {
@@ -57,8 +61,6 @@ body {
 .h2-loginpage {
   font-family: 'Varela', sans-serif;
   color: #FDF5E6;
-  text-decoration-line: underline;
-  text-decoration-style: double;
 }
 
 /** NY LOGO **/
@@ -212,6 +214,16 @@ body {
   font-weight: bold;
   color: #555;
   font-size: 1em;
+}
+
+.game-mode-buttons {
+  display: flex;
+  flex-direction: column;
+}
+
+.quiz-buttons {
+  display: flex;
+  flex-direction: column;
 }
 
 .result {
@@ -436,9 +448,6 @@ body {
 .custom-file-input:active {
   transform: scale(0.95);
 }
-
-/* FriendsPage */
-
 .main-content-friends {
   display: flex;
   flex-direction: column;
@@ -450,8 +459,6 @@ body {
 .friends-h2 {
   font-family: 'Varela', sans-serif;
   color: black;
-  text-decoration-line: underline;
-  text-decoration-style: double;
   font-size: 1.5rem;
 }
 
@@ -495,10 +502,9 @@ button {
 }
 
 button:hover {
-  background-color: #990033;
-  color: #FDF5E6;
+  background-color: #000;
+  color: #fff;
 }
-
 /* Header */
 
 .header {
@@ -602,6 +608,8 @@ button:hover {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  width: 300px;
+  margin-bottom: 10px;
 }
 
 .friend-header {
@@ -624,7 +632,7 @@ button:hover {
 
 .friend-actions .icon-trash {
   cursor: pointer;
-  color: #d11a2a;
+  color: black;
   font-size: 1.2em;
 }
 
@@ -655,6 +663,169 @@ button:hover {
   display: flex;
   height: 90vh;
   width: 100vw;
+}
+
+.user-search-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.search-input {
+  margin-top: 10px;
+  flex: 1;
+  padding: 10px 15px;
+  border: 2px solid black;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.search-input:focus {
+  border-color: #913d01;
+  outline: none;
+}
+
+.search-button {
+  padding: 5px 10px;
+  background-color: #CC5500;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.search-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.search-button:hover:not(:disabled) {
+  background-color: #913d01;
+}
+
+.error-message {
+  color: #913d01;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.search-results {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+.result-item:hover {
+  background-color: #FDF5E6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.result-item button {
+  padding: 6px 12px;
+  background-color: #3e8a50;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-size: 14px;
+}
+
+.result-item button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.result-item button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.friend-requests {
+  margin-top: 30px;
+}
+
+.friend-requests ul {
+  list-style: none;
+  padding: 0;
+}
+
+.friend-requests li {
+  padding: 10px 15px;
+  background-color: #FDF5E6;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  color: #000;
+}
+
+/* FriendRequests.tsx !! */
+
+.friend-requests-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.friend-request-item {
+  padding: 12px 15px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.friend-request-item:last-child {
+  border-bottom: none;
+}
+
+.friend-request-item p {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.friend-request-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.friend-request-buttons button {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.friend-request-buttons .accept-button {
+  background-color: #3e8a50;
+  color: #ffffff;
+}
+
+.friend-request-buttons .accept-button:hover {
+  background-color: rgb(25, 102, 42);
+}
+
+.friend-request-buttons .reject-button {
+  background-color: #913d01;
+  color: #ffffff;
+}
+
+.friend-request-buttons .reject-button:hover {
+  background-color: rgb(159, 36, 36);
 }
 
 /* Table in MyStatistics **/
@@ -754,14 +925,80 @@ h4 {
   padding: 10px;
 }
 
-// .statistics-table tr:nth-child(even) {
-//   background-color: #913d01;
-//   color: white;
-// }
+/* PlayAgainstFriendModal */
 
-// .statistics-table tr:hover {
-//   background-color: #913d01;
-// }
+.play-against-friend-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.modal-title {
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+  color: black;
+  text-align: center;
+}
+
+.modal-loading,
+.modal-error,
+.modal-success {
+  font-size: 1rem;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.modal-error {
+  color: #913d01;
+}
+
+.modal-success {
+  color: #3e8a50;
+}
+
+.modal-body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.modal-label {
+  margin-bottom: 8px;
+  font-size: 1rem;
+  color: #CC5500;
+}
+
+.modal-select {
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid #FDF5E6;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  transition: border-color 0.3s ease;
+}
+
+.modal-select:focus {
+  border-color: #CC5500;
+  outline: none;
+}
+
+.modal-send-button {
+  padding: 12px 20px;
+  font-size: 1rem;
+  background-color: #CC5500;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-bottom: 15px;
+}
+
+.modal-send-button:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
 
 /* Bigger screens */
 
@@ -781,5 +1018,9 @@ h4 {
     justify-content: flex-start;
     align-items: center;
     flex-grow: 1;
+  }
+
+  .game-mode-buttons {
+    flex-direction: row;
   }
 }

@@ -23,7 +23,7 @@ const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId,
     if (challengeStatus === 'accepted' && gameData) {
       onClose();
     } else if (challengeStatus === 'declined') {
-      setSendError("Your friend declined the challenge.");
+      setSendError("Friend declined the challenge.");
     }
   }, [challengeStatus, gameData, onClose]);
 
@@ -36,7 +36,7 @@ const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId,
   const handleSendChallenge = () => {
     console.log("Sending challenge with difficulty:", difficulty);
     if (!selectedFriendId) {
-      setSendError("Please select a friend to challenge.");
+      setSendError("Choose a friend to challenge.");
       return;
     }
 
@@ -48,33 +48,39 @@ const PlayAgainstFriendModal: React.FC<PlayAgainstFriendModalProps> = ({ userId,
 
   return (
     <Modal onClose={onClose}>
-      <h2>Play Against a Friend</h2>
-      {loading && <p>Loading friends...</p>}
-      {friendsError && <p>Error: {friendsError}</p>}
-      {!loading && !friendsError && (
-        <div>
-          <label htmlFor="friend-select">Select a friend:</label>
-          <select
-            id="friend-select"
-            value={selectedFriendId}
-            onChange={(e) => setSelectedFriendId(e.target.value)}
-          >
-            <option value="">--Choose a friend--</option>
-            {friends.map((friend) => (
-              <option key={friend.friendId} value={friend.friendId}>
-                {friend.friendName} ({friend.friendEmail})
-              </option>
-            ))}
-          </select>
+      <div className="play-against-friend-modal">
+        <h2 className="modal-title">Play against a friend</h2>
+        {loading && <p className="modal-loading">Loading friends...</p>}
+        {friendsError && <p className="modal-error">Error: {friendsError}</p>}
+        {!loading && !friendsError && (
+          <div className="modal-body">
+            <label htmlFor="friend-select" className="modal-label">Choose a friend:</label>
+            <select
+              id="friend-select"
+              className="modal-select"
+              value={selectedFriendId}
+              onChange={(e) => setSelectedFriendId(e.target.value)}
+            >
+              <option value="">--Choose a friend--</option>
+              {friends.map((friend) => (
+                <option key={friend.friendId} value={friend.friendId}>
+                  {friend.friendName} ({friend.friendEmail})
+                </option>
+              ))}
+            </select>
 
-          <button onClick={handleSendChallenge} disabled={!selectedFriendId || challengeStatus === 'pending'}>
-            {challengeStatus === 'pending' ? "Sending..." : "Send Challenge"}
-          </button>
-          {sendError && <p style={{ color: "red" }}>{sendError}</p>}
-          {successMessage && <p style={{ color: "green" }}>{successMessage}</p>}
-        </div>
-      )}
-      <button onClick={onClose} style={{ marginTop: "10px" }}>Close</button>
+            <button
+              className="modal-send-button"
+              onClick={handleSendChallenge}
+              disabled={!selectedFriendId || challengeStatus === 'pending'}
+            >
+              {challengeStatus === 'pending' ? "Sending..." : "Send challenge"}
+            </button>
+            {sendError && <p className="modal-error">{sendError}</p>}
+            {successMessage && <p className="modal-success">{successMessage}</p>}
+          </div>
+        )}
+      </div>
     </Modal>
   );
 };
