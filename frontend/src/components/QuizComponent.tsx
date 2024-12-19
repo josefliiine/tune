@@ -112,6 +112,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
     setRecognitionInstance(recognition);
 
+    recognition.start();
+
     return () => {
       recognition.abort();
     };
@@ -145,6 +147,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
           setIsCorrect(null);
           setSelectedAnswer(null);
           setWaitingMessage(null);
+          setTimer(15);
           nextQuestionDataRef.current = null;
           setIsTransitioning(false);
         }
@@ -209,22 +212,19 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         clearTimeout(nextQuestionTimeoutRef.current);
       }
     };
-  }, [gameId, userId]);
+  }, [gameId, userId, navigate]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
     if (!isQuizComplete && localQuizQuestions[currentQuestionIndex] && !isTransitioning) {
-      setTimer(15);
       interval = setInterval(() => {
         setTimer((prevTimer) => {
           if (prevTimer > 0 && !selectedAnswer && !isQuizComplete) {
             return prevTimer - 1;
           } else if (prevTimer === 0 && !selectedAnswer && !isQuizComplete) {
             if (interval) clearInterval(interval);
-            setTimeout(() => {
-              handleAnswerSelect('');
-            }, 1000);
+            handleAnswerSelect('');
           }
           return prevTimer;
         });
@@ -348,7 +348,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                   padding: "10px",
                   margin: "5px",
                   backgroundColor: isSelected ? (isCorrectAnswer ? "lightgreen" : "lightcoral") : "white",
-                  color: "black"
+                  color: "black",
+                  cursor: isQuizComplete || selectedAnswer ? "not-allowed" : "pointer",
                 }}
               >
                 {answer}

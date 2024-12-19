@@ -125,7 +125,7 @@ const FriendCard: React.FC<FriendCardProps> = ({ friend, onRemove }) => {
       case "draw":
         return { color: "gray" };
       case "completed":
-        return { color: "blue" };
+        return { color: "orange" };
       default:
         return {};
     }
