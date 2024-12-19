@@ -220,24 +220,59 @@ io.on('connection', (socket: CustomSocket) => {
     }
   });
 
+  socket.on('leaveGame', async ({ gameId, userId }: { gameId: string, userId: string }) => {
+    console.log(`Received 'leaveGame' event from userId=${userId} for gameId=${gameId}`);
+    try {
+      const game = await Game.findOne({ gameId });
+
+      if (!game) {
+        socket.emit('error', { message: 'Game not found.' });
+        console.warn(`Game with ID ${gameId} not found.`);
+        return;
+      }
+
+      if (game.status === 'finished' || game.status === 'aborted') {
+        socket.emit('error', { message: 'Cannot leave a finished or aborted game.' });
+        console.warn(`Cannot leave game ${gameId} because it is already ${game.status}.`);
+        return;
+      }
+
+      game.status = 'aborted';
+      game.aborted = true;
+      await game.save();
+      console.log(`Game ${gameId} marked as aborted by user ${userId}.`);
+
+      io.in(gameId).emit('gameAborted', { message: `Player ${userId} has left the game.` });
+      console.log(`Emitted 'gameAborted' to all players in game ${gameId}.`);
+
+      socket.leave(gameId);
+      console.log(`User ${userId} left game room ${gameId}.`);
+    } catch (error: unknown) {
+      console.error(`Error handling 'leaveGame' for userId=${userId} and gameId=${gameId}:`, error);
+      if (error instanceof Error) {
+        socket.emit('error', { message: 'Error leaving game.' });
+      }
+    }
+  });
+
   socket.on('disconnect', async () => {
     const userId = socket.userId;
     console.log(`User disconnected: ${socket.id}, userId: ${userId}`);
 
     if (userId) {
       userIdToSocketId.delete(userId);
-      console.log(`User ${userId} removed från userIdToSocketId mapping.`);
+      console.log(`User ${userId} removed from userIdToSocketId mapping.`);
 
       try {
         await WaitingList.deleteOne({ userId });
-        console.log(`User ${userId} removed från waiting list.`);
+        console.log(`User ${userId} removed from waiting list.`);
 
-        const activeGames: IGame[] = await Game.find({
+        const activeGames = await Game.find({
           $or: [{ player1: userId }, { player2: userId }],
           status: { $nin: ['finished', 'aborted'] },
-        }).exec();
+        });
 
-        console.log(`Found ${activeGames.length} active game(s) för user ${userId}.`);
+        console.log(`Found ${activeGames.length} active game(s) for user ${userId}.`);
 
         for (const game of activeGames) {
           if (game.gameMode === 'self') {
@@ -247,30 +282,26 @@ io.on('connection', (socket: CustomSocket) => {
           game.status = 'aborted';
           game.aborted = true;
           await game.save();
-          console.log(`Game ${game.gameId} aborted på grund av att user ${userId} kopplade från.`);
+          console.log(`Game ${game.gameId} aborted due to user ${userId} disconnecting.`);
 
-          const opponentId: string | null = game.player1 === userId ? game.player2 : game.player1;
+          const opponentId = game.player1 === userId ? game.player2 : game.player1;
 
           if (opponentId) {
             const opponentSocketId = userIdToSocketId.get(opponentId);
             if (opponentSocketId) {
-              console.log(`Emitting 'gameAborted' till opponent ${opponentId} (socket ID: ${opponentSocketId})`);
+              console.log(`Emitting 'gameAborted' to opponent ${opponentId} (socket ID: ${opponentSocketId})`);
               io.to(opponentSocketId).emit('gameAborted', {
                 message: 'Din motståndare har lämnat spelet.',
               });
               console.log(`'gameAborted' skickat till ${opponentId} (socket ID: ${opponentSocketId})`);
             } else {
-              console.warn(`Opponentens socket ID hittades inte för user ${opponentId}. De kanske är offline.`);
+              console.warn(`Opponent's socket ID not found for user ${opponentId}. May be offline.`);
             }
-          } else {
-            console.warn(`Ingen opponent hittades för game ${game.gameId}.`);
           }
         }
       } catch (error: unknown) {
-        console.error(`Error hantering av disconnect för user ${userId}:`, error);
+        console.error(`Error handling disconnect for user ${userId}:`, error);
       }
-    } else {
-      console.warn(`Disconnected socket ${socket.id} hade ingen associerad userId.`);
     }
   });
 });
@@ -278,16 +309,14 @@ io.on('connection', (socket: CustomSocket) => {
 mongoose.connect(DATABASE_URL)
   .then(async () => {
     console.log('Connected to MongoDB');
-    console.log('Connected to database:', mongoose.connection.db?.databaseName);
+    console.log('Connected to database:', mongoose.connection.db!.databaseName);
 
-    const collections = await mongoose.connection.db?.collections();
-    if (collections) {
-      console.log('Collections:');
-      collections.forEach(col => console.log(col.collectionName));
-    }
+    const collections = await mongoose.connection.db!.collections();
+    console.log('Collections:');
+    collections.forEach(col => console.log(col.collectionName));
 
     server.listen(PORT, () => {
-      console.log(`Backend körs på http://localhost:${PORT}`);
+      console.log(`Backend is running på http://localhost:${PORT}`);
     });
   })
   .catch(err => {

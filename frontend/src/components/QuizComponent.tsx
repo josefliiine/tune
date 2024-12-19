@@ -264,6 +264,11 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     }
   };
 
+  const handleLeaveGame = () => {
+    socket.emit('leaveGame', { gameId, userId });
+    navigate('/start-page');
+  };
+
   if (isQuizComplete) {
     if (finalResults) {
       const { player1, player2, winner } = finalResults;
@@ -318,10 +323,18 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
   return (
     <div className="quiz-content">
-      <main className="main-content">
+      <main className="main-content" style={{ position: 'relative' }}>
+        {/* Leave Game Button */}
+        <button
+        className="leave-game-button"
+          onClick={handleLeaveGame}
+        >
+          Leave Game
+        </button>
+
         <h2>Question {currentQuestionIndex + 1}</h2>
-        <p>{currentQ.question}</p>
-        <p><strong>Timer: {timer}</strong> sekunder kvar</p>
+        <p className="question-text">{currentQ.question}</p>
+        <p>Timer: <strong>{timer}</strong> seconds left</p>
         <div>
           {currentQ.answers.map((answer, index) => {
             const isSelected = answer === selectedAnswer;
@@ -329,8 +342,10 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
             const isWrongAnswer = isSelected && isCorrect === false;
 
             return (
+              <div className="answers-container">
               <motion.button
                 key={index}
+                className="answers-buttons"
                 onClick={() => handleAnswerSelect(answer)}
                 disabled={Boolean(isQuizComplete || selectedAnswer)}
                 initial={{ scale: 1, borderColor: "black" }}
@@ -354,6 +369,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
               >
                 {answer}
               </motion.button>
+              </div>
             );
           })}
         </div>
