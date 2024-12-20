@@ -324,11 +324,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   return (
     <div className="quiz-content">
       <main className="main-content" style={{ position: 'relative' }}>
-        {/* Leave Game Button */}
         <button
         className="leave-game-button"
-          onClick={handleLeaveGame}
-        >
+          onClick={handleLeaveGame}>
           Leave Game
         </button>
 
@@ -336,15 +334,15 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         <p className="question-text">{currentQ.question}</p>
         <p>Timer: <strong>{timer}</strong> seconds left</p>
         <div>
-          {currentQ.answers.map((answer, index) => {
+          {currentQ.answers.map((answer) => {
             const isSelected = answer === selectedAnswer;
             const isCorrectAnswer = isSelected && isCorrect === true;
             const isWrongAnswer = isSelected && isCorrect === false;
 
             return (
-              <div className="answers-container">
+              <div className="answers-container" key={answer}>
               <motion.button
-                key={index}
+                key={answer}
                 className="answers-buttons"
                 onClick={() => handleAnswerSelect(answer)}
                 disabled={Boolean(isQuizComplete || selectedAnswer)}
