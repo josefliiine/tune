@@ -74,14 +74,14 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
   useEffect(() => {
     const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
+
     if (!SpeechRecognitionConstructor) {
       console.warn("Web Speech API is not supported in this browser.");
       return;
     }
 
     const recognition = new SpeechRecognitionConstructor();
-    recognition.lang = 'sv-SE';
+    recognition.lang = "sv-SE";
     recognition.interimResults = false;
     recognition.continuous = true;
 
@@ -93,7 +93,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error("Speech Recognition Error:", event.error, event.message);
-      if (event.error === 'no-speech') {
+      if (event.error === "no-speech") {
         recognition.start();
       }
     };
@@ -171,7 +171,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       console.log("Received 'gameAborted' event with data:", data);
       setAbortMessage(data.message);
       setIsQuizComplete(true);
-      navigate('/start-page');
+      navigate("/start-page");
       alert(data.message);
     };
 
@@ -224,7 +224,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
             return prevTimer - 1;
           } else if (prevTimer === 0 && !selectedAnswer && !isQuizComplete) {
             if (interval) clearInterval(interval);
-            handleAnswerSelect('');
+            handleAnswerSelect("");
           }
           return prevTimer;
         });
@@ -252,9 +252,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     if (!currentQ) return;
 
     const normalizedSpokenText = spokenText.toLowerCase();
-    const matchedAnswer = currentQ.answers.find(answer =>
-      answer.toLowerCase() === normalizedSpokenText
-    );
+    const matchedAnswer = currentQ.answers.find((answer) => answer.toLowerCase() === normalizedSpokenText);
 
     if (matchedAnswer) {
       socket.emit("submitAnswer", { gameId, userId, answer: matchedAnswer });
@@ -265,33 +263,27 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   };
 
   const handleLeaveGame = () => {
-    socket.emit('leaveGame', { gameId, userId });
-    navigate('/start-page');
+    socket.emit("leaveGame", { gameId, userId });
+    navigate("/start-page");
   };
 
   if (isQuizComplete) {
     if (finalResults) {
       const { player1, player2, winner } = finalResults;
-      const myResult = (player1 && player1.id === userId) ? player1 : player2;
-      const opponentResult = (player1 && player1.id !== userId) ? player1 : player2;
+      const myResult = player1 && player1.id === userId ? player1 : player2;
+      const opponentResult = player1 && player1.id !== userId ? player1 : player2;
 
       return (
         <div className="quiz-content">
           <main className="main-content">
             <h2>Quiz Complete!</h2>
-            {myResult && (
-              <p>Your score: {myResult.score}</p>
-            )}
+            {myResult && <p>Your score: {myResult.score}</p>}
             {opponentResult && (
               <p>
                 Opponent: {opponentResult.name} - Score: {opponentResult.score}
               </p>
             )}
-            {winner && winner !== 'draw' ? (
-              <p>Winner: {winner}</p>
-            ) : (
-              <p>It's a draw!</p>
-            )}
+            {winner && winner !== "draw" ? <p>Winner: {winner}</p> : <p>It's a draw!</p>}
             {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
           </main>
         </div>
@@ -323,16 +315,16 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
   return (
     <div className="quiz-content">
-      <main className="main-content" style={{ position: 'relative' }}>
-        <button
-        className="leave-game-button"
-          onClick={handleLeaveGame}>
+      <main className="main-content" style={{ position: "relative" }}>
+        <button className="leave-game-button" onClick={handleLeaveGame}>
           Leave Game
         </button>
 
         <h2>Question {currentQuestionIndex + 1}</h2>
         <p className="question-text">{currentQ.question}</p>
-        <p>Timer: <strong>{timer}</strong> seconds left</p>
+        <p>
+          Timer: <strong>{timer}</strong> seconds left
+        </p>
         <div>
           {currentQ.answers.map((answer) => {
             const isSelected = answer === selectedAnswer;
@@ -341,37 +333,37 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
             return (
               <div className="answers-container" key={answer}>
-              <motion.button
-                key={answer}
-                className="answers-buttons"
-                onClick={() => handleAnswerSelect(answer)}
-                disabled={Boolean(isQuizComplete || selectedAnswer)}
-                initial={{ scale: 1, borderColor: "black" }}
-                animate={{
-                  scale: isSelected ? 1.1 : 1,
-                  borderColor: isCorrectAnswer
-                    ? "green"
-                    : isWrongAnswer
-                    ? "red"
-                    : "gray",
-                }}
-                transition={{ duration: 0.3 }}
-                style={{
-                  border: "2px solid",
-                  padding: "10px",
-                  margin: "5px",
-                  backgroundColor: isSelected ? (isCorrectAnswer ? "lightgreen" : "lightcoral") : "white",
-                  color: "black",
-                  cursor: isQuizComplete || selectedAnswer ? "not-allowed" : "pointer",
-                }}
-              >
-                {answer}
-              </motion.button>
+                <motion.button
+                  key={answer}
+                  className="answers-buttons"
+                  onClick={() => handleAnswerSelect(answer)}
+                  disabled={Boolean(isQuizComplete || selectedAnswer)}
+                  initial={{ scale: 1, borderColor: "black" }}
+                  animate={{
+                    scale: isSelected ? 1.1 : 1,
+                    borderColor: isCorrectAnswer
+                      ? "green"
+                      : isWrongAnswer
+                      ? "red"
+                      : "gray",
+                  }}
+                  transition={{ duration: 0.3 }}
+                  style={{
+                    border: "2px solid",
+                    padding: "10px",
+                    margin: "5px",
+                    backgroundColor: isSelected ? (isCorrectAnswer ? "lightgreen" : "lightcoral") : "white",
+                    color: "black",
+                    cursor: isQuizComplete || selectedAnswer ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {answer}
+                </motion.button>
               </div>
             );
           })}
         </div>
-        {selectedAnswer && (
+        {selectedAnswer && isCorrect !== null && (
           <p>
             {isCorrect ? "Correct!" : `Wrong! The correct answer is: ${currentQ.correctAnswer}`}
           </p>
