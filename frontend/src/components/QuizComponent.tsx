@@ -113,9 +113,6 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error("Speech Recognition Error:", event.error, event.message);
-      if (event.error === "no-speech") {
-        recognition.start();
-      }
     };
 
     recognition.onspeechstart = () => {
@@ -303,7 +300,6 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
   const handleStartRecognition = () => {
     if (!recognitionInstance) return;
-    recognitionInstance.abort();
 
     recognitionInstance.start();
     console.log("Speech recognition started by user click.");
@@ -333,7 +329,11 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                 Opponent: {opponentResult.name} - Score: {opponentResult.score}
               </p>
             )}
-            {winner && winner !== "draw" ? <p>Winner: {winner}</p> : <p>It's a draw!</p>}
+            {winner && winner !== "draw" ? (
+              <p>Winner: {winner}</p>
+            ) : (
+              <p>It's a draw!</p>
+            )}
             {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
           </main>
         </div>
