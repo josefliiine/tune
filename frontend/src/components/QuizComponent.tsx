@@ -420,6 +420,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
         {recognitionInstance && (
           <button
+            className="recognition-button"
             onClick={handleStartRecognition}
             disabled={Boolean(selectedAnswer || isQuizComplete)}
           >

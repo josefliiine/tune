@@ -1028,6 +1028,12 @@ h4 {
   cursor: not-allowed;
 }
 
+.recognition-button {
+  background-color: #66CC00;
+  color: white;
+  width: 80%;
+}
+
 /* Bigger screens */
 
 @media (min-width: 768px) {
@@ -1050,5 +1056,9 @@ h4 {
 
   .game-mode-buttons {
     flex-direction: row;
+  }
+
+  .recognition-button {
+    width: 30%;
   }
 }
