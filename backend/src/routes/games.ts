@@ -90,29 +90,40 @@ export const handleGameEvents = async (
   socket.on("joinGame", async ({ gameId, userId }: { gameId: string; userId: string }) => {
     socket.join(gameId);
     console.log(`User ${userId} joined game ${gameId}`);
-
+  
     const game = await Game.findOne({ gameId }) as IGame;
     if (!game) {
       socket.emit("error", { message: "Game not found." });
+      console.warn(`Game not found: ${gameId}`);
       return;
     }
-
+  
     console.log(`CurrentQuestionIndex: ${game.currentQuestionIndex}, QuestionsCount: ${game.questionsCount}`);
-
+  
+    if (game.status === "aborted") {
+      socket.emit("gameAborted", { message: "Game is interrupted." });
+      console.log(`User ${userId} tried to join aborted game ${gameId}. Emitting 'gameAborted'`);
+      return;
+    } else if (game.status === "finished") {
+      socket.emit("error", { message: "Game is finished." });
+      console.log(`User ${userId} tried to join finished game ${gameId}.`);
+      return;
+    }
+  
     if (game.currentQuestionIndex >= game.questions.length) {
       socket.emit("error", { message: "No more questions available." });
       return;
     }
-
+  
     if (game.status === "started" && game.currentQuestionIndex === 0) {
-      const currentQuestion = game.questions[0];
+      const currentQuestion = game.questions[game.currentQuestionIndex];
       if (!currentQuestion) {
         socket.emit("error", { message: "Current question not found." });
         return;
       }
       io.to(gameId).emit("nextQuestion", {
-        currentQuestionIndex: 0,
-        question: currentQuestion
+        currentQuestionIndex: game.currentQuestionIndex,
+        question: currentQuestion,
       });
       console.log(`Emitted nextQuestion for gameId: ${gameId}`);
     }

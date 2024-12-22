@@ -48,6 +48,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   initialQuizQuestions,
 }) => {
   const navigate = useNavigate();
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [score, setScore] = useState<number>(0);
@@ -72,8 +73,28 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const nextQuestionDataRef = useRef<NextQuestionData | null>(null);
   const nextQuestionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const hasLeftGameRef = useRef(false);
+
   useEffect(() => {
-    const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const handleLeaveGameOnUnload = () => {
+      if (!hasLeftGameRef.current) {
+        hasLeftGameRef.current = true;
+        socket.emit("leaveGame", { gameId, userId });
+      }
+    };
+
+    window.addEventListener("beforeunload", handleLeaveGameOnUnload);
+    window.addEventListener("unload", handleLeaveGameOnUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleLeaveGameOnUnload);
+      window.removeEventListener("unload", handleLeaveGameOnUnload);
+    };
+  }, [gameId, userId]);
+
+  useEffect(() => {
+    const SpeechRecognitionConstructor = (window as any).SpeechRecognition
+      || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognitionConstructor) {
       console.warn("Web Speech API is not supported in this browser.");
@@ -195,7 +216,6 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     socket.on("waitingForOpponent", handleWaitingForOpponent);
     socket.on("error", handleError);
     socket.on("gameResults", handleGameResults);
-
     socket.emit("joinGame", { gameId, userId });
 
     return () => {
@@ -224,7 +244,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
             return prevTimer - 1;
           } else if (prevTimer === 0 && !selectedAnswer && !isQuizComplete) {
             if (interval) clearInterval(interval);
-            handleAnswerSelect("noAnswer"); 
+            handleAnswerSelect("noAnswer");
           }
           return prevTimer;
         });
@@ -234,13 +254,18 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [currentQuestionIndex, isQuizComplete, localQuizQuestions, selectedAnswer, isTransitioning]);
+  }, [
+    currentQuestionIndex,
+    isQuizComplete,
+    localQuizQuestions,
+    selectedAnswer,
+    isTransitioning,
+  ]);
 
   const handleAnswerSelect = (answer: string) => {
     if (isQuizComplete || selectedAnswer) {
       return;
     }
-
     setSelectedAnswer(answer);
     socket.emit("submitAnswer", { gameId, userId, answer });
   };
@@ -265,7 +290,10 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   };
 
   const handleLeaveGame = () => {
-    socket.emit("leaveGame", { gameId, userId });
+    if (!hasLeftGameRef.current) {
+      hasLeftGameRef.current = true;
+      socket.emit("leaveGame", { gameId, userId });
+    }
     navigate("/start-page");
   };
 
@@ -285,7 +313,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                 Opponent: {opponentResult.name} - Score: {opponentResult.score}
               </p>
             )}
-            {winner && winner !== "draw" ? <p>Winner: {winner}</p> : <p>It's a draw!</p>}
+            {winner && winner !== "draw"
+              ? <p>Winner: {winner}</p>
+              : <p>It's a draw!</p>}
             {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
           </main>
         </div>
@@ -327,6 +357,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         <p>
           Timer: <strong>{timer}</strong> seconds left
         </p>
+
         <div>
           {currentQ.answers.map((answer) => {
             const isSelected = answer === selectedAnswer;
@@ -343,11 +374,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                   initial={{ scale: 1, borderColor: "black" }}
                   animate={{
                     scale: isSelected ? 1.1 : 1,
-                    borderColor: isCorrectAnswer
-                      ? "green"
-                      : isWrongAnswer
-                      ? "red"
-                      : "gray",
+                    borderColor: isCorrectAnswer ? "green"
+                          : isWrongAnswer ? "red"
+                          : "gray",
                   }}
                   transition={{ duration: 0.3 }}
                   style={{
@@ -361,7 +390,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                       : "white",
                     color: "black",
                     cursor:
-                      isQuizComplete || selectedAnswer ? "not-allowed" : "pointer",
+                      isQuizComplete || selectedAnswer
+                        ? "not-allowed"
+                        : "pointer",
                   }}
                 >
                   {answer}
@@ -370,6 +401,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
             );
           })}
         </div>
+
         {selectedAnswer && isCorrect !== null && (
           <p>
             {isCorrect
@@ -377,6 +409,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
               : `Wrong! The correct answer is: ${currentQ.correctAnswer}`}
           </p>
         )}
+
         {waitingMessage && (
           <p style={{ color: "black", fontStyle: "italic" }}>{waitingMessage}</p>
         )}
