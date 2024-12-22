@@ -19,7 +19,6 @@ export const handleGameEvents = async (
   io: Server,
   userIdToSocketId: Map<string, string>
 ) => {
-
   async function sendGameResults(game: IGame, io: Server, gameId: string) {
     console.log(`Sending game results for gameId: ${gameId}`);
 
@@ -29,15 +28,12 @@ export const handleGameEvents = async (
       const player1Data = player1Doc.data();
       const player1Name = player1Data?.displayName || player1Data?.email || 'Unknown';
 
-      console.log(`Calculating score for player1 (${player1Name})`);
+      console.log(`Calculating score for single player1 (${player1Name})`);
 
       const player1Score = game.player1Answers.reduce((count, ans, i) => {
         const question = game.questions[i];
-        if (question && ans && ans.trim() === question.correctAnswer.trim()) {
+        if (question && ans.trim() === question.correctAnswer.trim()) {
           return count + 1;
-        }
-        if (!question) {
-          console.warn(`Question at index ${i} is undefined for gameId: ${gameId}`);
         }
         return count;
       }, 0);
@@ -45,7 +41,7 @@ export const handleGameEvents = async (
       io.to(gameId).emit("gameResults", {
         player1: { id: game.player1, name: player1Name, score: player1Score },
         player2: null,
-        winner: player1Name
+        winner: player1Name,
       });
     } else {
       const db = admin.firestore();
@@ -65,9 +61,6 @@ export const handleGameEvents = async (
         if (question && ans.trim() === question.correctAnswer.trim()) {
           return count + 1;
         }
-        if (!question) {
-          console.warn(`Question at index ${i} is undefined for player1 in gameId: ${gameId}`);
-        }
         return count;
       }, 0);
 
@@ -75,9 +68,6 @@ export const handleGameEvents = async (
         const question = game.questions[i];
         if (question && ans.trim() === question.correctAnswer.trim()) {
           return count + 1;
-        }
-        if (!question) {
-          console.warn(`Question at index ${i} is undefined for player2 in gameId: ${gameId}`);
         }
         return count;
       }, 0);
@@ -92,7 +82,7 @@ export const handleGameEvents = async (
       io.to(gameId).emit("gameResults", {
         player1: { id: game.player1, name: player1Name, score: player1Score },
         player2: { id: game.player2, name: player2Name, score: player2Score },
-        winner
+        winner,
       });
     }
   }
@@ -104,31 +94,24 @@ export const handleGameEvents = async (
     const game = await Game.findOne({ gameId }) as IGame;
     if (!game) {
       socket.emit("error", { message: "Game not found." });
-      console.error(`Game not found: ${gameId}`);
       return;
     }
 
-    console.log(
-      `CurrentQuestionIndex: ${game.currentQuestionIndex}, QuestionsCount: ${game.questionsCount}`
-    );
+    console.log(`CurrentQuestionIndex: ${game.currentQuestionIndex}, QuestionsCount: ${game.questionsCount}`);
 
     if (game.currentQuestionIndex >= game.questions.length) {
-      console.error(
-        `currentQuestionIndex (${game.currentQuestionIndex}) exceeds questions length (${game.questions.length}) for gameId: ${gameId}`
-      );
       socket.emit("error", { message: "No more questions available." });
       return;
     }
 
     if (game.status === "started" && game.currentQuestionIndex === 0) {
-      const currentQuestion = game.questions[game.currentQuestionIndex];
+      const currentQuestion = game.questions[0];
       if (!currentQuestion) {
-        console.warn(`No current question found at index ${game.currentQuestionIndex} for gameId: ${gameId}`);
         socket.emit("error", { message: "Current question not found." });
         return;
       }
       io.to(gameId).emit("nextQuestion", {
-        currentQuestionIndex: game.currentQuestionIndex,
+        currentQuestionIndex: 0,
         question: currentQuestion
       });
       console.log(`Emitted nextQuestion for gameId: ${gameId}`);
@@ -140,12 +123,11 @@ export const handleGameEvents = async (
       const game = await Game.findOne({ gameId }) as IGame;
       if (!game) {
         socket.emit("error", { message: "Game not found." });
-        console.error(`Game not found: ${gameId}`);
         return;
       }
 
       console.log(`Received answer from user ${userId} for gameId ${gameId}: ${answer}`);
-      console.log(`CurrentQuestionIndex: ${game.currentQuestionIndex}, QuestionsCount: ${game.questionsCount}`);
+      console.log(`CurrentQuestionIndex: ${game.currentQuestionIndex}`);
 
       if (game.currentQuestionIndex >= game.questions.length) {
         socket.emit("error", { message: "No more questions available." });
@@ -158,48 +140,16 @@ export const handleGameEvents = async (
         return;
       }
 
-      const isPlayer1 = userId === game.player1;
-      const isPlayer2 = userId === game.player2;
-      if (!isPlayer1 && !isPlayer2) {
-        socket.emit("error", { message: "Invalid user in game." });
-        return;
-      }
+      if (game.gameMode === "self" || game.player2 === null) {
+        game.player1Answers.push(answer);
 
-      let answersArray = isPlayer1 ? game.player1Answers : game.player2Answers;
+        socket.emit("playerAnswered", {
+          userId,
+          isCorrect: answer.trim() === currentQuestion.correctAnswer.trim(),
+        });
 
-      if (answersArray.length > game.currentQuestionIndex) {
-        const existing = answersArray[game.currentQuestionIndex];
-        if (existing === "noAnswer") {
-          console.log(`Replacing "noAnswer" with a real answer for user ${userId}`);
-          answersArray[game.currentQuestionIndex] = answer;
-        } else {
-          console.log(
-            `User ${userId} already answered question #${game.currentQuestionIndex} with a real answer. Ignoring.`
-          );
-          return;
-        }
-      } else {
-        answersArray.push(answer);
-      }
-
-      if (isPlayer1) {
-        game.player1Answered = true;
-      } else {
-        game.player2Answered = true;
-      }
-
-      await game.save();
-
-      const isCorrect = answer.trim() === currentQuestion.correctAnswer.trim();
-      io.to(gameId).emit("playerAnswered", { userId, isCorrect });
-
-      const bothAnswered = game.player1Answered && game.player2Answered;
-
-      if (bothAnswered) {
         if (game.currentQuestionIndex < game.questionsCount - 1) {
           game.currentQuestionIndex += 1;
-          game.player1Answered = false;
-          game.player2Answered = false;
           await game.save();
 
           if (game.currentQuestionIndex >= game.questions.length) {
@@ -218,15 +168,81 @@ export const handleGameEvents = async (
               currentQuestionIndex: game.currentQuestionIndex,
               question: nextQuestion
             });
-            console.log(`Emitted nextQuestion for gameId: ${gameId}`);
+            console.log(`Emitted nextQuestion for single player gameId: ${gameId}`);
           }, 1500);
 
         } else {
           game.status = "finished";
           await game.save();
           io.to(gameId).emit("gameFinished", { message: "Game finished." });
-          console.log(`Game ${gameId} finished. Sending results.`);
+          console.log(`Game ${gameId} finished (single player). Sending results.`);
           await sendGameResults(game, io, gameId);
+        }
+      } else {
+        const isPlayer1 = userId === game.player1;
+        const isPlayer2 = userId === game.player2;
+        if (!isPlayer1 && !isPlayer2) {
+          socket.emit("error", { message: "Invalid user in this multiplayer game." });
+          return;
+        }
+
+        const answersArray = isPlayer1 ? game.player1Answers : game.player2Answers;
+
+        if (answersArray.length > game.currentQuestionIndex) {
+          const existing = answersArray[game.currentQuestionIndex];
+          if (existing === "noAnswer") {
+            answersArray[game.currentQuestionIndex] = answer;
+          } else {
+            console.log(`User ${userId} already answered question #${game.currentQuestionIndex}. Ignoring.`);
+            return;
+          }
+        } else {
+          answersArray.push(answer);
+        }
+
+        if (isPlayer1) {
+          game.player1Answered = true;
+        } else {
+          game.player2Answered = true;
+        }
+        await game.save();
+
+        const isCorrect = answer.trim() === currentQuestion.correctAnswer.trim();
+        io.to(gameId).emit("playerAnswered", { userId, isCorrect });
+
+        if (game.player1Answered && game.player2Answered) {
+          if (game.currentQuestionIndex < game.questionsCount - 1) {
+            game.currentQuestionIndex += 1;
+            game.player1Answered = false;
+            game.player2Answered = false;
+            await game.save();
+
+            if (game.currentQuestionIndex >= game.questions.length) {
+              socket.emit("error", { message: "No more questions available." });
+              return;
+            }
+
+            const nextQuestion = game.questions[game.currentQuestionIndex];
+            if (!nextQuestion) {
+              socket.emit("error", { message: "Next question not found." });
+              return;
+            }
+
+            setTimeout(() => {
+              io.to(gameId).emit("nextQuestion", {
+                currentQuestionIndex: game.currentQuestionIndex,
+                question: nextQuestion
+              });
+              console.log(`Emitted nextQuestion for gameId: ${gameId}`);
+            }, 1500);
+
+          } else {
+            game.status = "finished";
+            await game.save();
+            io.to(gameId).emit("gameFinished", { message: "Game finished." });
+            console.log(`Game ${gameId} finished. Sending results.`);
+            await sendGameResults(game, io, gameId);
+          }
         }
       }
     } catch (error: unknown) {
@@ -244,9 +260,9 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 
   try {
     if (gameMode !== 'self') {
-      return res.status(400).json({
-        message: 'Invalid game mode. Only "self" is supported here.'
-      });
+      return res
+        .status(400)
+        .json({ message: 'Invalid game mode. Only "self" is supported here.' });
     }
 
     const userId = reqWithUser.user.uid;
@@ -260,8 +276,8 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
           question: 1,
           answers: 1,
           correctAnswer: 1,
-        }
-      }
+        },
+      },
     ]);
 
     if (!questions || questions.length === 0) {
