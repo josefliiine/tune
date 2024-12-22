@@ -93,8 +93,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   }, [gameId, userId]);
 
   useEffect(() => {
-    const SpeechRecognitionConstructor = (window as any).SpeechRecognition
-      || (window as any).webkitSpeechRecognition;
+    const SpeechRecognitionConstructor = window.SpeechRecognition
+      || window.webkitSpeechRecognition;
 
     if (!SpeechRecognitionConstructor) {
       console.warn("Web Speech API is not supported in this browser.");
@@ -102,7 +102,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     }
 
     const recognition = new SpeechRecognitionConstructor();
-    recognition.lang = "sv-SE";
+    recognition.lang = "en-US";
     recognition.interimResults = false;
     recognition.continuous = true;
 
@@ -132,8 +132,6 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     };
 
     setRecognitionInstance(recognition);
-
-    recognition.start();
 
     return () => {
       recognition.abort();
@@ -216,6 +214,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     socket.on("waitingForOpponent", handleWaitingForOpponent);
     socket.on("error", handleError);
     socket.on("gameResults", handleGameResults);
+
     socket.emit("joinGame", { gameId, userId });
 
     return () => {
@@ -289,6 +288,13 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     }
   };
 
+  const handleStartRecognition = () => {
+    if (recognitionInstance) {
+      recognitionInstance.start();
+      console.log("Speech recognition started by user click.");
+    }
+  };
+
   const handleLeaveGame = () => {
     if (!hasLeftGameRef.current) {
       hasLeftGameRef.current = true;
@@ -313,9 +319,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                 Opponent: {opponentResult.name} - Score: {opponentResult.score}
               </p>
             )}
-            {winner && winner !== "draw"
-              ? <p>Winner: {winner}</p>
-              : <p>It's a draw!</p>}
+            {winner && winner !== "draw" ? <p>Winner: {winner}</p> : <p>It's a draw!</p>}
             {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
           </main>
         </div>
@@ -374,9 +378,11 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                   initial={{ scale: 1, borderColor: "black" }}
                   animate={{
                     scale: isSelected ? 1.1 : 1,
-                    borderColor: isCorrectAnswer ? "green"
-                          : isWrongAnswer ? "red"
-                          : "gray",
+                    borderColor: isCorrectAnswer
+                      ? "green"
+                      : isWrongAnswer
+                      ? "red"
+                      : "gray",
                   }}
                   transition={{ duration: 0.3 }}
                   style={{
@@ -390,9 +396,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                       : "white",
                     color: "black",
                     cursor:
-                      isQuizComplete || selectedAnswer
-                        ? "not-allowed"
-                        : "pointer",
+                      isQuizComplete || selectedAnswer ? "not-allowed" : "pointer",
                   }}
                 >
                   {answer}
@@ -416,7 +420,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
         {recognitionInstance && (
           <button
-            onClick={() => recognitionInstance.start()}
+            onClick={handleStartRecognition}
             disabled={Boolean(selectedAnswer || isQuizComplete)}
           >
             Answer with voice

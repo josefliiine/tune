@@ -171,7 +171,7 @@ io.on('connection', (socket: CustomSocket) => {
           gameMode: 'friend',
           status: 'started',
           createdAt: new Date(),
-          questions: questions.map((q: any) => ({
+          questions: questions.map(q => ({
             questionId: q.questionId,
             question: q.question,
             answers: q.answers,
