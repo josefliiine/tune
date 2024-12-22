@@ -224,7 +224,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
             return prevTimer - 1;
           } else if (prevTimer === 0 && !selectedAnswer && !isQuizComplete) {
             if (interval) clearInterval(interval);
-            handleAnswerSelect("");
+            handleAnswerSelect("noAnswer"); 
           }
           return prevTimer;
         });
@@ -252,7 +252,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     if (!currentQ) return;
 
     const normalizedSpokenText = spokenText.toLowerCase();
-    const matchedAnswer = currentQ.answers.find((answer) => answer.toLowerCase() === normalizedSpokenText);
+    const matchedAnswer = currentQ.answers.find(
+      (ans) => ans.toLowerCase() === normalizedSpokenText
+    );
 
     if (matchedAnswer) {
       socket.emit("submitAnswer", { gameId, userId, answer: matchedAnswer });
@@ -352,9 +354,14 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                     border: "2px solid",
                     padding: "10px",
                     margin: "5px",
-                    backgroundColor: isSelected ? (isCorrectAnswer ? "lightgreen" : "lightcoral") : "white",
+                    backgroundColor: isSelected
+                      ? isCorrectAnswer
+                        ? "lightgreen"
+                        : "lightcoral"
+                      : "white",
                     color: "black",
-                    cursor: isQuizComplete || selectedAnswer ? "not-allowed" : "pointer",
+                    cursor:
+                      isQuizComplete || selectedAnswer ? "not-allowed" : "pointer",
                   }}
                 >
                   {answer}
@@ -365,7 +372,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         </div>
         {selectedAnswer && isCorrect !== null && (
           <p>
-            {isCorrect ? "Correct!" : `Wrong! The correct answer is: ${currentQ.correctAnswer}`}
+            {isCorrect
+              ? "Correct!"
+              : `Wrong! The correct answer is: ${currentQ.correctAnswer}`}
           </p>
         )}
         {waitingMessage && (
@@ -373,7 +382,10 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         )}
 
         {recognitionInstance && (
-          <button onClick={() => recognitionInstance.start()} disabled={Boolean(selectedAnswer || isQuizComplete)}>
+          <button
+            onClick={() => recognitionInstance.start()}
+            disabled={Boolean(selectedAnswer || isQuizComplete)}
+          >
             Answer with voice
           </button>
         )}
