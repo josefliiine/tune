@@ -168,6 +168,11 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
           setTimer(15);
           nextQuestionDataRef.current = null;
           setIsTransitioning(false);
+
+          if (recognitionInstance) {
+            console.log("Aborting recognition before next question");
+            recognitionInstance.abort();
+          }
         }
       }, 2000);
     };
@@ -230,7 +235,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
         clearTimeout(nextQuestionTimeoutRef.current);
       }
     };
-  }, [gameId, userId, navigate]);
+  }, [gameId, userId, navigate, recognitionInstance]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -265,9 +270,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   ]);
 
   const handleAnswerSelect = (answer: string) => {
-    if (isQuizComplete || selectedAnswer) {
-      return;
-    }
+    if (isQuizComplete || selectedAnswer) return;
 
     if (recognitionInstance) {
       recognitionInstance.stop();
@@ -289,6 +292,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     );
 
     if (matchedAnswer) {
+      if (recognitionInstance) recognitionInstance.stop();
+
       socket.emit("submitAnswer", { gameId, userId, answer: matchedAnswer });
       setSelectedAnswer(matchedAnswer);
     } else {
@@ -297,10 +302,11 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   };
 
   const handleStartRecognition = () => {
-    if (recognitionInstance) {
-      recognitionInstance.start();
-      console.log("Speech recognition started by user click.");
-    }
+    if (!recognitionInstance) return;
+    recognitionInstance.abort();
+
+    recognitionInstance.start();
+    console.log("Speech recognition started by user click.");
   };
 
   const handleLeaveGame = () => {
@@ -327,11 +333,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                 Opponent: {opponentResult.name} - Score: {opponentResult.score}
               </p>
             )}
-            {winner && winner !== "draw" ? (
-              <p>Winner: {winner}</p>
-            ) : (
-              <p>It's a draw!</p>
-            )}
+            {winner && winner !== "draw" ? <p>Winner: {winner}</p> : <p>It's a draw!</p>}
             {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
           </main>
         </div>
