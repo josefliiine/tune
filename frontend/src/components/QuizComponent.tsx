@@ -67,7 +67,6 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const [recognitionInstance, setRecognitionInstance] = useState<SpeechRecognition | null>(null);
 
   const [timer, setTimer] = useState<number>(15);
-
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const nextQuestionDataRef = useRef<NextQuestionData | null>(null);
@@ -93,8 +92,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   }, [gameId, userId]);
 
   useEffect(() => {
-    const SpeechRecognitionConstructor = window.SpeechRecognition
-      || window.webkitSpeechRecognition;
+    const SpeechRecognitionConstructor =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognitionConstructor) {
       console.warn("Web Speech API is not supported in this browser.");
@@ -236,7 +235,11 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
-    if (!isQuizComplete && localQuizQuestions[currentQuestionIndex] && !isTransitioning) {
+    if (
+      !isQuizComplete &&
+      localQuizQuestions[currentQuestionIndex] &&
+      !isTransitioning
+    ) {
       interval = setInterval(() => {
         setTimer((prevTimer) => {
           if (prevTimer > 0 && !selectedAnswer && !isQuizComplete) {
@@ -265,6 +268,11 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     if (isQuizComplete || selectedAnswer) {
       return;
     }
+
+    if (recognitionInstance) {
+      recognitionInstance.stop();
+    }
+
     setSelectedAnswer(answer);
     socket.emit("submitAnswer", { gameId, userId, answer });
   };
@@ -319,7 +327,11 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                 Opponent: {opponentResult.name} - Score: {opponentResult.score}
               </p>
             )}
-            {winner && winner !== "draw" ? <p>Winner: {winner}</p> : <p>It's a draw!</p>}
+            {winner && winner !== "draw" ? (
+              <p>Winner: {winner}</p>
+            ) : (
+              <p>It's a draw!</p>
+            )}
             {abortMessage && <p style={{ color: "red" }}>{abortMessage}</p>}
           </main>
         </div>
@@ -396,7 +408,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                       : "white",
                     color: "black",
                     cursor:
-                      isQuizComplete || selectedAnswer ? "not-allowed" : "pointer",
+                      isQuizComplete || selectedAnswer
+                        ? "not-allowed"
+                        : "pointer",
                   }}
                 >
                   {answer}
