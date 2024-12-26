@@ -54,7 +54,10 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
   const [score, setScore] = useState<number>(0);
   const [isQuizComplete, setIsQuizComplete] = useState<boolean>(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [localQuizQuestions, setLocalQuizQuestions] = useState<Question[]>(initialQuizQuestions);
+
+  const [localQuizQuestions, setLocalQuizQuestions] =
+    useState<Question[]>(initialQuizQuestions);
+
   const [abortMessage, setAbortMessage] = useState<string | null>(null);
   const [waitingMessage, setWaitingMessage] = useState<string | null>(null);
 
@@ -64,7 +67,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     winner?: string;
   } | null>(null);
 
-  const [recognitionInstance, setRecognitionInstance] = useState<SpeechRecognition | null>(null);
+  const [recognitionInstance, setRecognitionInstance] =
+    useState<SpeechRecognition | null>(null);
 
   const [timer, setTimer] = useState<number>(15);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -175,6 +179,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     };
 
     const handlePlayerAnswered = (data: PlayerAnsweredData) => {
+      console.log("playerAnswered event:", data);
+
       if (data.userId === userId) {
         setIsCorrect(data.isCorrect);
         if (data.isCorrect) {
@@ -273,7 +279,14 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
       recognitionInstance.stop();
     }
 
+    const currentQuestion = localQuizQuestions[currentQuestionIndex];
+    if (currentQuestion) {
+      const localCheckCorrect = answer === currentQuestion.correctAnswer;
+      setIsCorrect(localCheckCorrect);
+    }
+
     setSelectedAnswer(answer);
+
     socket.emit("submitAnswer", { gameId, userId, answer });
   };
 
@@ -290,6 +303,9 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
 
     if (matchedAnswer) {
       if (recognitionInstance) recognitionInstance.stop();
+
+      const localCheckCorrect = matchedAnswer === currentQ.correctAnswer;
+      setIsCorrect(localCheckCorrect);
 
       socket.emit("submitAnswer", { gameId, userId, answer: matchedAnswer });
       setSelectedAnswer(matchedAnswer);
@@ -317,7 +333,8 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     if (finalResults) {
       const { player1, player2, winner } = finalResults;
       const myResult = player1 && player1.id === userId ? player1 : player2;
-      const opponentResult = player1 && player1.id !== userId ? player1 : player2;
+      const opponentResult =
+        player1 && player1.id !== userId ? player1 : player2;
 
       return (
         <div className="quiz-content">
@@ -354,7 +371,10 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
     );
   }
 
-  if (currentQuestionIndex < 0 || currentQuestionIndex >= localQuizQuestions.length) {
+  if (
+    currentQuestionIndex < 0 ||
+    currentQuestionIndex >= localQuizQuestions.length
+  ) {
     return <div>Loading question...</div>;
   }
 
@@ -389,7 +409,7 @@ const QuizComponent: React.FC<QuizComponentProps> = ({
                   className="answers-buttons"
                   onClick={() => handleAnswerSelect(answer)}
                   disabled={Boolean(isQuizComplete || selectedAnswer)}
-                  initial={{ scale: 1, borderColor: "black" }}
+                  initial={{ scale: 1, borderColor: "gray" }}
                   animate={{
                     scale: isSelected ? 1.1 : 1,
                     borderColor: isCorrectAnswer
